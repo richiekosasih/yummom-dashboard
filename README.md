@@ -1,38 +1,16 @@
-# Yummom Dashboard
+# React + Vite
 
-A simple business dashboard for managing frozen food inventory, orders, and cost calculations for Yummom.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Project Goal
-This project is built to help manage a small frozen food business by tracking:
-- inventory stock
-- customer orders
-- cost of goods sold (HPP)
-- simple business insights
+Currently, two official plugins are available:
 
-## Planned Features
-- Add and manage raw materials
-- Track stock in and stock out
-- Create and manage customer orders
-- Automatically update stock after orders
-- Calculate HPP / cost per product
-- Show sales and profit summary
-- Low stock warning
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Tech Stack
-- React
-- Vite
-- JavaScript
-- Tailwind CSS
-- LocalStorage
+## React Compiler
 
-## Project Status
-Currently in planning and setup stage.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Future Improvements
-- Export reports
-- Charts for sales and stock movement
-- Authentication
-- Database integration
+## Expanding the ESLint configuration
 
-## dev by me
-Richie Kosasih
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
