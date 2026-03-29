@@ -1,6 +1,15 @@
 import { ordersRepository } from '../../services/repositories/orders.repository'
-import { sortOrdersNewestFirst } from './orders.logic'
+import {
+  filterOrdersByCustomerName,
+  normalizeOrders,
+  sortOrdersNewestFirst,
+} from './orders.logic'
 
 export function getOrders() {
-  return sortOrdersNewestFirst(ordersRepository.getAll())
+  const orders = ordersRepository.getAll()
+  return sortOrdersNewestFirst(normalizeOrders(orders))
+}
+
+export function searchOrdersByCustomerName(keyword) {
+  return filterOrdersByCustomerName(getOrders(), keyword)
 }

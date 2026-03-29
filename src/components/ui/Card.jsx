@@ -1,10 +1,13 @@
-function Card({ title, children }) {
+function Card({ title, subtitle, children }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {title ? (
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          {title}
-        </h3>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            {title}
+          </h3>
+          {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
+        </div>
       ) : null}
       {children}
     </section>
