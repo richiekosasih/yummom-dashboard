@@ -1,0 +1,58 @@
+const inventoryData = [
+  {
+    id: 'INV-001',
+    name: 'Pork',
+    category: 'Raw Material',
+    stock: 45,
+    unit: 'kg',
+    purchaseDate: '2026-03-26',
+    expiryDate: '2026-04-09',
+  },
+  {
+    id: 'INV-002',
+    name: 'Cheese',
+    category: 'Raw Material',
+    stock: 20,
+    unit: 'kg',
+    purchaseDate: '2026-03-22',
+    expiryDate: '2026-04-18',
+  },
+  {
+    id: 'INV-003',
+    name: 'Bread Crumbs',
+    category: 'Raw Material',
+    stock: 16,
+    unit: 'kg',
+    purchaseDate: '2026-03-19',
+    expiryDate: '2026-06-19',
+  },
+  {
+    id: 'INV-004',
+    name: 'Plastic Packaging',
+    category: 'Packaging',
+    stock: 350,
+    unit: 'pcs',
+    purchaseDate: '2026-03-15',
+    expiryDate: null,
+  },
+  {
+    id: 'INV-005',
+    name: 'Label Sticker',
+    category: 'Packaging',
+    stock: 220,
+    unit: 'pcs',
+    purchaseDate: '2026-03-17',
+    expiryDate: null,
+  },
+  {
+    id: 'INV-006',
+    name: 'Printing Paper',
+    category: 'Supply',
+    stock: 10,
+    unit: 'pack',
+    purchaseDate: '2026-03-28',
+    expiryDate: null,
+  },
+]
+
+export default inventoryData

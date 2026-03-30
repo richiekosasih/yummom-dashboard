@@ -1,6 +1,6 @@
 import { localStorageClient } from '../storage/localStorageClient'
 import { STORAGE_KEYS } from '../storage/storageKeys'
-import mockInventory from '../../data/mockInventory'
+import inventoryData from '../../data/inventoryData'
 
 const KEY = STORAGE_KEYS.inventory
 
@@ -12,13 +12,13 @@ function getAll() {
   const items = localStorageClient.read(KEY, [])
   if (items.length > 0) {
     if (isLegacyFinishedGoodsInventory(items)) {
-      localStorageClient.write(KEY, mockInventory)
-      return mockInventory
+      localStorageClient.write(KEY, inventoryData)
+      return inventoryData
     }
     return items
   }
-  localStorageClient.write(KEY, mockInventory)
-  return mockInventory
+  localStorageClient.write(KEY, inventoryData)
+  return inventoryData
 }
 
 function saveAll(items) {

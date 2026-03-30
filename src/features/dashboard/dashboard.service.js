@@ -1,6 +1,6 @@
-import mockInventory from '../../data/mockInventory'
+import inventoryData from '../../data/inventoryData'
 import mockOrders from '../../data/mockOrders'
-import mockProducts from '../../data/mockProducts'
+import productsData from '../../data/productsData'
 import mockExpenses from '../../data/mockExpenses'
 
 function sumBy(items, key) {
@@ -25,9 +25,9 @@ function normalizeInventoryItems(items) {
 }
 
 export function getDashboardData() {
-  const inventoryItems = normalizeInventoryItems(mockInventory)
+  const inventoryItems = normalizeInventoryItems(inventoryData)
   const orders = [...mockOrders]
-  const products = [...mockProducts]
+  const products = [...productsData]
   const expenses = [...mockExpenses]
 
   const lowStockThreshold = 10
