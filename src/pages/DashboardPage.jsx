@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { formatIDR } from '../utils/currency'
+import { formatDate } from '../utils/date'
 import { getDashboardData } from '../features/dashboard/dashboard.service'
 
 function getStockContext(stock) {
@@ -27,7 +29,24 @@ function getStockContext(stock) {
   }
 }
 
+function getOrderStatusContext(status) {
+  if (status === 'completed') {
+    return { label: 'Completed', badgeClass: 'bg-emerald-100 text-emerald-700' }
+  }
+
+  if (status === 'paid') {
+    return { label: 'Paid', badgeClass: 'bg-blue-100 text-blue-700' }
+  }
+
+  if (status === 'shipped') {
+    return { label: 'Shipped', badgeClass: 'bg-purple-100 text-purple-700' }
+  }
+
+  return { label: 'Pending', badgeClass: 'bg-amber-100 text-amber-700' }
+}
+
 function DashboardPage() {
+  const [recentOrderSort, setRecentOrderSort] = useState('dueDate')
   const dashboard = getDashboardData()
   const summaryCardMap = Object.fromEntries(
     dashboard.summaryCards.map((card) => [card.id, card]),
@@ -74,6 +93,23 @@ function DashboardPage() {
     },
   ]
 
+  const normalizedOrders = dashboard.recentOrders.map((order) => ({
+    ...order,
+    dueDate: order.dueDate || order.orderDate,
+    address: order.address || 'Address not set',
+  }))
+
+  const sortedRecentOrders = [...normalizedOrders].sort((a, b) => {
+    if (recentOrderSort === 'total') return Number(b.total || 0) - Number(a.total || 0)
+
+    return (
+      new Date(a.dueDate || a.orderDate).getTime() -
+      new Date(b.dueDate || b.orderDate).getTime()
+    )
+  })
+
+  const recentOrders = sortedRecentOrders.slice(0, 5)
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -117,21 +153,78 @@ function DashboardPage() {
       </section>
 
       <section>
-        <Card
-          title="Recommended Actions Today"
-          subtitle="Quick checklist for daily operations"
-        >
-          <ul className="space-y-2">
-            {recommendedActions.map((action) => (
-              <li
-                key={action.id}
-                className={`rounded-lg border px-3 py-2 ${action.toneClass}`}
+        <Card title="Recent Orders" subtitle="Orders to review and process first">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="recent-order-sort"
+                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
               >
-                <p className="text-sm font-semibold">{action.title}</p>
-                <p className="text-xs">{action.description}</p>
-              </li>
-            ))}
-          </ul>
+                Sort by
+              </label>
+              <select
+                id="recent-order-sort"
+                value={recentOrderSort}
+                onChange={(event) => setRecentOrderSort(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700"
+              >
+                <option value="dueDate">Due Date</option>
+                <option value="total">Total Amount</option>
+              </select>
+            </div>
+            <Button variant="secondary" className="px-3 py-1.5 text-xs">
+              View All Orders
+            </Button>
+          </div>
+
+          {recentOrders.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
+              <p className="font-medium text-slate-700">No recent orders yet.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Add a new order to start tracking deliveries.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">Customer Name</th>
+                    <th className="py-2 pr-3">Due Date</th>
+                    <th className="py-2 pr-3">Address</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => {
+                    const statusContext = getOrderStatusContext(order.status)
+                    return (
+                      <tr key={order.id} className="border-b border-slate-100">
+                        <td className="py-3 pr-3 font-medium text-slate-700">
+                          {order.customerName}
+                        </td>
+                        <td className="py-3 pr-3 text-slate-600">
+                          {formatDate(order.dueDate)}
+                        </td>
+                        <td className="py-3 pr-3 text-slate-600">{order.address}</td>
+                        <td className="py-3 pr-3">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${statusContext.badgeClass}`}
+                          >
+                            {statusContext.label}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right font-semibold text-slate-700">
+                          {formatIDR(order.total)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </section>
 
@@ -176,20 +269,6 @@ function DashboardPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card title="Recent Orders" subtitle="Latest transactions to follow up">
-            <ul className="space-y-2 text-sm">
-              {dashboard.recentOrders.map((order) => (
-                <li
-                  key={order.id}
-                  className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
-                >
-                  <span className="font-medium text-slate-700">{order.customerName}</span>
-                  <span className="text-slate-600">{formatIDR(order.total)}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
           <Card title="Low Stock Alerts" subtitle="Items that need urgent restock">
             {dashboard.lowStockAlerts.length === 0 ? (
               <p className="text-sm text-slate-600">No low stock alerts right now.</p>
@@ -210,6 +289,25 @@ function DashboardPage() {
             )}
           </Card>
         </div>
+      </section>
+
+      <section>
+        <Card
+          title="Recommended Actions Today"
+          subtitle="Quick checklist for daily operations"
+        >
+          <ul className="space-y-2">
+            {recommendedActions.map((action) => (
+              <li
+                key={action.id}
+                className={`rounded-lg border px-3 py-2 ${action.toneClass}`}
+              >
+                <p className="text-sm font-semibold">{action.title}</p>
+                <p className="text-xs">{action.description}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
       </section>
 
       <section>
