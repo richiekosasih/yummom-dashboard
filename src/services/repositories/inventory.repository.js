@@ -4,9 +4,19 @@ import mockInventory from '../../data/mockInventory'
 
 const KEY = STORAGE_KEYS.inventory
 
+function isLegacyFinishedGoodsInventory(items) {
+  return items.some((item) => Array.isArray(item.batches))
+}
+
 function getAll() {
   const items = localStorageClient.read(KEY, [])
-  if (items.length > 0) return items
+  if (items.length > 0) {
+    if (isLegacyFinishedGoodsInventory(items)) {
+      localStorageClient.write(KEY, mockInventory)
+      return mockInventory
+    }
+    return items
+  }
   localStorageClient.write(KEY, mockInventory)
   return mockInventory
 }

@@ -11,8 +11,16 @@ function normalizeInventoryItems(items) {
   return items.map((item) => ({
     id: item.id,
     name: item.name,
-    stock: Number(item.stock || 0),
-    unit: item.unit || 'unit',
+    stock: Number(
+      item.stock ||
+        (Array.isArray(item.batches)
+          ? item.batches.reduce(
+              (total, batch) => total + Number(batch.quantity || 0),
+              0,
+            )
+          : 0),
+    ),
+    unit: item.unit || 'pack',
   }))
 }
 

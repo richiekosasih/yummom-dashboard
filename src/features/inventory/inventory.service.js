@@ -1,6 +1,15 @@
 import { inventoryRepository } from '../../services/repositories/inventory.repository'
-import { sortInventoryByName } from './inventory.logic'
+import {
+  normalizeInventoryItems,
+  searchInventoryItemsByName,
+  sortInventoryByName,
+} from './inventory.logic'
 
 export function getInventoryItems() {
-  return sortInventoryByName(inventoryRepository.getAll())
+  const items = inventoryRepository.getAll()
+  return sortInventoryByName(normalizeInventoryItems(items))
+}
+
+export function searchInventoryItems(keyword) {
+  return searchInventoryItemsByName(getInventoryItems(), keyword)
 }
