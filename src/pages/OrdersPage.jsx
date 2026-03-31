@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
-import { getOrders, searchOrdersByCustomerName } from '../features/orders/orders.service'
+import {
+  getCustomerOptions,
+  getOrders,
+  searchOrdersByCustomerName,
+} from '../features/orders/orders.service'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
@@ -22,6 +26,7 @@ function getStatusLabel(status) {
 
 function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const customerOptions = getCustomerOptions()
 
   const orders = useMemo(() => {
     if (!searchTerm.trim()) return getOrders()
@@ -50,6 +55,38 @@ function OrdersPage() {
         />
       </section>
 
+      <Card
+        title="Add New Order (MVP Flow)"
+        subtitle="For now, select customer from master data and continue in future form."
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-1">
+            <label htmlFor="mvp-order-customer" className="block text-sm font-medium text-slate-700">
+              Customer
+            </label>
+            <select
+              id="mvp-order-customer"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Select customer
+              </option>
+              {customerOptions.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input id="mvp-order-date" label="Order Date" type="date" />
+          <Input id="mvp-due-date" label="Due Date" type="date" />
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          This flow is UI-only for MVP. Save logic will be added after backend/data layer phase.
+        </p>
+      </Card>
+
       <Card title="Order List" subtitle="Latest orders are shown first">
         {orders.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
@@ -63,8 +100,10 @@ function OrdersPage() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-3">Order ID</th>
                   <th className="py-2 pr-3">Customer</th>
                   <th className="py-2 pr-3">Order Date</th>
+                  <th className="py-2 pr-3">Due Date</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 text-right">Total</th>
                 </tr>
@@ -72,11 +111,17 @@ function OrdersPage() {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id} className="border-b border-slate-100">
+                    <td className="py-3 pr-3 font-mono text-xs text-slate-600">
+                      {order.id}
+                    </td>
                     <td className="py-3 pr-3 font-medium text-slate-700">
                       {order.customerName}
                     </td>
                     <td className="py-3 pr-3 text-slate-600">
                       {formatDate(order.orderDate)}
+                    </td>
+                    <td className="py-3 pr-3 text-slate-600">
+                      {formatDate(order.dueDate)}
                     </td>
                     <td className="py-3 pr-3">
                       <span

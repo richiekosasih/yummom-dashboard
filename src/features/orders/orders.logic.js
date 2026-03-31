@@ -7,8 +7,10 @@ export function sortOrdersNewestFirst(orders) {
 export function normalizeOrders(orders) {
   return orders.map((order) => ({
     id: order.id,
+    customerId: order.customerId || null,
     customerName: order.customerName || 'Unknown Customer',
     orderDate: order.orderDate || new Date().toISOString().slice(0, 10),
+    dueDate: order.dueDate || order.orderDate || new Date().toISOString().slice(0, 10),
     status: order.status || 'pending',
     total: Number(order.total || 0),
   }))
