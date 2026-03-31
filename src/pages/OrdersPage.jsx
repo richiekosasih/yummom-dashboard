@@ -10,18 +10,21 @@ import {
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
-function getStatusBadgeClass(status) {
-  if (status === 'completed') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'paid') return 'bg-blue-100 text-blue-700'
-  if (status === 'shipped') return 'bg-purple-100 text-purple-700'
-  return 'bg-amber-100 text-amber-700'
+function getOrderStatusBadge(orderStatus) {
+  if (orderStatus === 'completed') {
+    return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700' }
+  }
+  if (orderStatus === 'in_progress') {
+    return { label: 'In Progress', className: 'bg-blue-100 text-blue-700' }
+  }
+  return { label: 'Pending', className: 'bg-amber-100 text-amber-700' }
 }
 
-function getStatusLabel(status) {
-  if (status === 'completed') return 'Completed'
-  if (status === 'paid') return 'Paid'
-  if (status === 'shipped') return 'Shipped'
-  return 'Pending'
+function getPaymentStatusBadge(paymentStatus) {
+  if (paymentStatus === 'paid') {
+    return { label: 'Paid', className: 'bg-emerald-100 text-emerald-700' }
+  }
+  return { label: 'Unpaid', className: 'bg-red-100 text-red-700' }
 }
 
 function OrdersPage() {
@@ -104,39 +107,50 @@ function OrdersPage() {
                   <th className="py-2 pr-3">Customer</th>
                   <th className="py-2 pr-3">Order Date</th>
                   <th className="py-2 pr-3">Due Date</th>
-                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">Order Status</th>
+                  <th className="py-2 pr-3">Payment Status</th>
                   <th className="py-2 text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-slate-100">
-                    <td className="py-3 pr-3 font-mono text-xs text-slate-600">
-                      {order.id}
-                    </td>
-                    <td className="py-3 pr-3 font-medium text-slate-700">
-                      {order.customerName}
-                    </td>
-                    <td className="py-3 pr-3 text-slate-600">
-                      {formatDate(order.orderDate)}
-                    </td>
-                    <td className="py-3 pr-3 text-slate-600">
-                      {formatDate(order.dueDate)}
-                    </td>
-                    <td className="py-3 pr-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(
-                          order.status,
-                        )}`}
-                      >
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right font-semibold text-slate-700">
-                      {formatIDR(order.total)}
-                    </td>
-                  </tr>
-                ))}
+                {orders.map((order) => {
+                  const orderStatus = getOrderStatusBadge(order.orderStatus)
+                  const paymentStatus = getPaymentStatusBadge(order.paymentStatus)
+
+                  return (
+                    <tr key={order.id} className="border-b border-slate-100">
+                      <td className="py-3 pr-3 font-mono text-xs text-slate-600">
+                        {order.id}
+                      </td>
+                      <td className="py-3 pr-3 font-medium text-slate-700">
+                        {order.customerName}
+                      </td>
+                      <td className="py-3 pr-3 text-slate-600">
+                        {formatDate(order.orderDate)}
+                      </td>
+                      <td className="py-3 pr-3 text-slate-600">
+                        {formatDate(order.dueDate)}
+                      </td>
+                      <td className="py-3 pr-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${orderStatus.className}`}
+                        >
+                          {orderStatus.label}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${paymentStatus.className}`}
+                        >
+                          {paymentStatus.label}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right font-semibold text-slate-700">
+                        {formatIDR(order.total)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

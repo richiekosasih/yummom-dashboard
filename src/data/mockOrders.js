@@ -4,7 +4,8 @@ const mockOrders = [
     customerId: 'CUS-001',
     orderDate: '2026-03-28',
     dueDate: '2026-03-30',
-    status: 'pending',
+    orderStatus: 'pending',
+    paymentStatus: 'unpaid',
     total: 210000,
   },
   {
@@ -12,7 +13,8 @@ const mockOrders = [
     customerId: 'CUS-002',
     orderDate: '2026-03-27',
     dueDate: '2026-03-29',
-    status: 'completed',
+    orderStatus: 'completed',
+    paymentStatus: 'paid',
     total: 120000,
   },
   {
@@ -20,7 +22,8 @@ const mockOrders = [
     customerId: 'CUS-003',
     orderDate: '2026-03-26',
     dueDate: '2026-03-31',
-    status: 'paid',
+    orderStatus: 'in_progress',
+    paymentStatus: 'paid',
     total: 175000,
   },
 ]

@@ -4,6 +4,18 @@ export function sortOrdersNewestFirst(orders) {
   )
 }
 
+function normalizeLegacyOrderStatus(status) {
+  if (status === 'completed') return 'completed'
+  if (status === 'paid') return 'in_progress'
+  if (status === 'shipped') return 'in_progress'
+  return 'pending'
+}
+
+function normalizeLegacyPaymentStatus(status) {
+  if (status === 'paid' || status === 'completed') return 'paid'
+  return 'unpaid'
+}
+
 export function normalizeOrders(orders) {
   return orders.map((order) => ({
     id: order.id,
@@ -11,7 +23,10 @@ export function normalizeOrders(orders) {
     customerName: order.customerName || 'Unknown Customer',
     orderDate: order.orderDate || new Date().toISOString().slice(0, 10),
     dueDate: order.dueDate || order.orderDate || new Date().toISOString().slice(0, 10),
-    status: order.status || 'pending',
+    orderStatus:
+      order.orderStatus || normalizeLegacyOrderStatus(order.status),
+    paymentStatus:
+      order.paymentStatus || normalizeLegacyPaymentStatus(order.status),
     total: Number(order.total || 0),
   }))
 }
