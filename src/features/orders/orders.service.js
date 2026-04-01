@@ -1,5 +1,6 @@
 import { ordersRepository } from '../../services/repositories/orders.repository'
 import customersData from '../../data/customersData'
+import productsData from '../../data/productsData'
 import {
   filterOrdersByCustomerName,
   normalizeOrders,
@@ -33,4 +34,19 @@ export function getCustomerOptions() {
   return customersData
     .filter((customer) => customer.isActive)
     .map((customer) => ({ id: customer.id, name: customer.name }))
+}
+
+export function getCustomerById(customerId) {
+  return customersData.find((customer) => customer.id === customerId) || null
+}
+
+export function getProductOptions() {
+  return productsData
+    .filter((product) => product.status === 'active')
+    .map((product) => ({
+      id: product.id,
+      name: product.name,
+      unit: product.unit,
+      price: Number(product.price || 0),
+    }))
 }

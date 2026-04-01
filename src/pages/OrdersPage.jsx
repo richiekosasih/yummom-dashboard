@@ -3,8 +3,10 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import {
+  getCustomerById,
   getCustomerOptions,
   getOrders,
+  getProductOptions,
   searchOrdersByCustomerName,
 } from '../features/orders/orders.service'
 import { formatDate } from '../utils/date'
@@ -30,11 +32,21 @@ function getPaymentStatusBadge(paymentStatus) {
 function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const customerOptions = getCustomerOptions()
+  const productOptions = getProductOptions()
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [draftOrderDate, setDraftOrderDate] = useState('')
+  const [draftDueDate, setDraftDueDate] = useState('')
 
   const orders = useMemo(() => {
     if (!searchTerm.trim()) return getOrders()
     return searchOrdersByCustomerName(searchTerm)
   }, [searchTerm])
+  const selectedCustomer = getCustomerById(selectedCustomerId)
+  const selectedProduct =
+    productOptions.find((product) => product.id === selectedProductId) || null
+  const calculatedTotal = Number(quantity || 0) * Number(selectedProduct?.price || 0)
 
   return (
     <div className="space-y-6">
@@ -60,7 +72,7 @@ function OrdersPage() {
 
       <Card
         title="Add New Order (MVP Flow)"
-        subtitle="For now, select customer from master data and continue in future form."
+        subtitle="Pick customer and product first, then continue with save flow later."
       >
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-1">
@@ -70,7 +82,8 @@ function OrdersPage() {
             <select
               id="mvp-order-customer"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              defaultValue=""
+              value={selectedCustomerId}
+              onChange={(event) => setSelectedCustomerId(event.target.value)}
             >
               <option value="" disabled>
                 Select customer
@@ -82,9 +95,58 @@ function OrdersPage() {
               ))}
             </select>
           </div>
-          <Input id="mvp-order-date" label="Order Date" type="date" />
-          <Input id="mvp-due-date" label="Due Date" type="date" />
+          <div className="space-y-1">
+            <label htmlFor="mvp-order-product" className="block text-sm font-medium text-slate-700">
+              Product
+            </label>
+            <select
+              id="mvp-order-product"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={selectedProductId}
+              onChange={(event) => setSelectedProductId(event.target.value)}
+            >
+              <option value="" disabled>
+                Select product
+              </option>
+              {productOptions.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input
+            id="mvp-order-qty"
+            label={`Quantity${selectedProduct ? ` (${selectedProduct.unit})` : ''}`}
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))}
+          />
+          <Input
+            id="mvp-order-date"
+            label="Order Date"
+            type="date"
+            value={draftOrderDate}
+            onChange={(event) => setDraftOrderDate(event.target.value)}
+          />
+          <Input
+            id="mvp-due-date"
+            label="Due Date"
+            type="date"
+            value={draftDueDate}
+            onChange={(event) => setDraftDueDate(event.target.value)}
+          />
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Estimated Total</p>
+            <p className="font-semibold text-slate-800">{formatIDR(calculatedTotal)}</p>
+          </div>
         </div>
+        {selectedCustomer ? (
+          <p className="mt-3 text-sm text-slate-600">
+            Customer address: <span className="font-medium text-slate-700">{selectedCustomer.address}</span>
+          </p>
+        ) : null}
         <p className="mt-3 text-xs text-slate-500">
           This flow is UI-only for MVP. Save logic will be added after backend/data layer phase.
         </p>
