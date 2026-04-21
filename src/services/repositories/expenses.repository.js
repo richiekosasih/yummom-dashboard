@@ -4,9 +4,14 @@ import mockExpenses from '../../data/mockExpenses'
 
 const KEY = STORAGE_KEYS.expenses
 
+function isValidShape(items) {
+  if (!Array.isArray(items) || items.length === 0) return false
+  return typeof items[0].date === 'string' && typeof items[0].category === 'string'
+}
+
 function getAll() {
   const items = localStorageClient.read(KEY, [])
-  if (items.length > 0) return items
+  if (isValidShape(items)) return items
   localStorageClient.write(KEY, mockExpenses)
   return mockExpenses
 }
