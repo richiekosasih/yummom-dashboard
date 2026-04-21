@@ -16,21 +16,49 @@ import {
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
-function getOrderStatusBadge(orderStatus) {
-  if (orderStatus === 'completed') {
-    return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700' }
+const ORDER_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending', className: 'bg-amber-100 text-amber-700' },
+  { value: 'in_progress', label: 'In Progress', className: 'bg-blue-100 text-blue-700' },
+  { value: 'completed', label: 'Completed', className: 'bg-emerald-100 text-emerald-700' },
+]
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'unpaid', label: 'Unpaid', className: 'bg-red-100 text-red-700' },
+  { value: 'paid', label: 'Paid', className: 'bg-emerald-100 text-emerald-700' },
+]
+
+const ORDER_STATUS_RANK = { pending: 0, in_progress: 1, completed: 2 }
+const PAYMENT_STATUS_RANK = { unpaid: 0, paid: 1 }
+
+const SORTABLE_COLUMNS = [
+  { field: 'id', label: 'Order ID', align: 'left' },
+  { field: 'customerName', label: 'Customer', align: 'left' },
+  { field: 'orderDate', label: 'Order Date', align: 'left' },
+  { field: 'dueDate', label: 'Due Date', align: 'left' },
+  { field: 'orderStatus', label: 'Order Status', align: 'left' },
+  { field: 'paymentStatus', label: 'Payment Status', align: 'left' },
+  { field: 'total', label: 'Total', align: 'right' },
+]
+
+function compareOrders(a, b, field) {
+  switch (field) {
+    case 'total':
+      return a.total - b.total
+    case 'orderDate':
+    case 'dueDate':
+      return new Date(a[field]).getTime() - new Date(b[field]).getTime()
+    case 'orderStatus':
+      return (ORDER_STATUS_RANK[a.orderStatus] ?? 0) - (ORDER_STATUS_RANK[b.orderStatus] ?? 0)
+    case 'paymentStatus':
+      return (PAYMENT_STATUS_RANK[a.paymentStatus] ?? 0) - (PAYMENT_STATUS_RANK[b.paymentStatus] ?? 0)
+    default:
+      return String(a[field] ?? '').localeCompare(String(b[field] ?? ''))
   }
-  if (orderStatus === 'in_progress') {
-    return { label: 'In Progress', className: 'bg-blue-100 text-blue-700' }
-  }
-  return { label: 'Pending', className: 'bg-amber-100 text-amber-700' }
 }
 
-function getPaymentStatusBadge(paymentStatus) {
-  if (paymentStatus === 'paid') {
-    return { label: 'Paid', className: 'bg-emerald-100 text-emerald-700' }
-  }
-  return { label: 'Unpaid', className: 'bg-red-100 text-red-700' }
+function getSortArrow(field, sortConfig) {
+  if (sortConfig.field !== field) return ''
+  return sortConfig.direction === 'asc' ? ' ▲' : ' ▼'
 }
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -51,11 +79,18 @@ function OrdersPage() {
   const [draftOrderDate, setDraftOrderDate] = useState(TODAY)
   const [draftDueDate, setDraftDueDate] = useState('')
   const [formErrors, setFormErrors] = useState({})
+  const [sortConfig, setSortConfig] = useState({ field: null, direction: 'asc' })
 
   const displayedOrders = useMemo(() => {
-    if (!searchTerm.trim()) return orders
-    return filterOrdersByCustomerName(orders, searchTerm)
-  }, [orders, searchTerm])
+    const filtered = searchTerm.trim()
+      ? filterOrdersByCustomerName(orders, searchTerm)
+      : orders
+
+    if (!sortConfig.field) return filtered
+
+    const sorted = [...filtered].sort((a, b) => compareOrders(a, b, sortConfig.field))
+    return sortConfig.direction === 'desc' ? sorted.reverse() : sorted
+  }, [orders, searchTerm, sortConfig])
 
   const selectedCustomer = getCustomerById(selectedCustomerId)
   const selectedProduct =
@@ -70,6 +105,22 @@ function OrdersPage() {
         formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 50)
     }
+  }
+
+  function handleSort(field) {
+    setSortConfig((prev) => {
+      if (prev.field !== field) return { field, direction: 'asc' }
+      if (prev.direction === 'asc') return { field, direction: 'desc' }
+      return { field: null, direction: 'asc' }
+    })
+  }
+
+  function updateOrderField(orderId, field, value) {
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.id === orderId ? { ...order, [field]: value } : order,
+      ),
+    )
   }
 
   function resetForm() {
@@ -263,7 +314,14 @@ function OrdersPage() {
         </div>
       ) : null}
 
-      <Card title="Order List" subtitle={`${displayedOrders.length} order(s) — latest first`}>
+      <Card
+        title="Order List"
+        subtitle={
+          sortConfig.field
+            ? `${displayedOrders.length} order(s) — sorted by ${SORTABLE_COLUMNS.find((c) => c.field === sortConfig.field)?.label} (${sortConfig.direction === 'asc' ? 'A→Z / oldest' : 'Z→A / newest'})`
+            : `${displayedOrders.length} order(s) — click a column header to sort`
+        }
+      >
         {displayedOrders.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <p className="font-medium text-slate-700">No orders found.</p>
@@ -276,19 +334,25 @@ function OrdersPage() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <th className="py-2 pr-3">Order ID</th>
-                  <th className="py-2 pr-3">Customer</th>
-                  <th className="py-2 pr-3">Order Date</th>
-                  <th className="py-2 pr-3">Due Date</th>
-                  <th className="py-2 pr-3">Order Status</th>
-                  <th className="py-2 pr-3">Payment Status</th>
-                  <th className="py-2 text-right">Total</th>
+                  {SORTABLE_COLUMNS.map((col) => (
+                    <th
+                      key={col.field}
+                      className={`cursor-pointer select-none py-2 pr-3 transition-colors hover:text-slate-800 ${col.align === 'right' ? 'text-right' : ''}`}
+                      onClick={() => handleSort(col.field)}
+                    >
+                      {col.label}{getSortArrow(col.field, sortConfig)}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {displayedOrders.map((order) => {
-                  const orderStatus = getOrderStatusBadge(order.orderStatus)
-                  const paymentStatus = getPaymentStatusBadge(order.paymentStatus)
+                  const currentOrderStatus = ORDER_STATUS_OPTIONS.find(
+                    (o) => o.value === order.orderStatus,
+                  ) || ORDER_STATUS_OPTIONS[0]
+                  const currentPaymentStatus = PAYMENT_STATUS_OPTIONS.find(
+                    (o) => o.value === order.paymentStatus,
+                  ) || PAYMENT_STATUS_OPTIONS[0]
 
                   return (
                     <tr key={order.id} className="border-b border-slate-100">
@@ -298,25 +362,37 @@ function OrdersPage() {
                       <td className="py-3 pr-3 font-medium text-slate-700">
                         {order.customerName}
                       </td>
-                      <td className="py-3 pr-3 text-slate-600">
+                      <td className="whitespace-nowrap py-3 pr-3 text-slate-600">
                         {formatDate(order.orderDate)}
                       </td>
-                      <td className="py-3 pr-3 text-slate-600">
+                      <td className="whitespace-nowrap py-3 pr-3 text-slate-600">
                         {formatDate(order.dueDate)}
                       </td>
                       <td className="py-3 pr-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${orderStatus.className}`}
+                        <select
+                          value={order.orderStatus}
+                          onChange={(e) => updateOrderField(order.id, 'orderStatus', e.target.value)}
+                          className={`cursor-pointer rounded-full border-none px-2 py-1 text-xs font-semibold outline-none ${currentOrderStatus.className}`}
                         >
-                          {orderStatus.label}
-                        </span>
+                          {ORDER_STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-3 pr-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${paymentStatus.className}`}
+                        <select
+                          value={order.paymentStatus}
+                          onChange={(e) => updateOrderField(order.id, 'paymentStatus', e.target.value)}
+                          className={`cursor-pointer rounded-full border-none px-2 py-1 text-xs font-semibold outline-none ${currentPaymentStatus.className}`}
                         >
-                          {paymentStatus.label}
-                        </span>
+                          {PAYMENT_STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-3 text-right font-semibold text-slate-700">
                         {formatIDR(order.total)}
