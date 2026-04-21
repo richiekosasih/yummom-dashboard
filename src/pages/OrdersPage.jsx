@@ -50,6 +50,7 @@ function OrdersPage() {
   const [quantity, setQuantity] = useState(1)
   const [draftOrderDate, setDraftOrderDate] = useState(TODAY)
   const [draftDueDate, setDraftDueDate] = useState('')
+  const [formErrors, setFormErrors] = useState({})
 
   const displayedOrders = useMemo(() => {
     if (!searchTerm.trim()) return orders
@@ -60,8 +61,6 @@ function OrdersPage() {
   const selectedProduct =
     productOptions.find((product) => product.id === selectedProductId) || null
   const calculatedTotal = Number(quantity || 0) * Number(selectedProduct?.price || 0)
-
-  const canSubmit = selectedCustomerId && selectedProductId && quantity >= 1
 
   function toggleForm() {
     const opening = !isFormOpen
@@ -79,10 +78,21 @@ function OrdersPage() {
     setQuantity(1)
     setDraftOrderDate(TODAY)
     setDraftDueDate('')
+    setFormErrors({})
   }
 
   function handleAddOrder() {
-    if (!canSubmit) return
+    const errors = {}
+    if (!selectedCustomerId) errors.customer = 'Please select a customer.'
+    if (!selectedProductId) errors.product = 'Please select a product.'
+    if (quantity < 1) errors.quantity = 'Quantity must be at least 1.'
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setFormErrors({})
 
     const newOrder = {
       id: generateNextOrderId(orders),
@@ -149,9 +159,12 @@ function OrdersPage() {
                 </label>
                 <select
                   id="mvp-order-customer"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className={`w-full rounded-md border px-3 py-2 text-sm ${formErrors.customer ? 'border-red-400' : 'border-slate-300'}`}
                   value={selectedCustomerId}
-                  onChange={(event) => setSelectedCustomerId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedCustomerId(event.target.value)
+                    setFormErrors((prev) => ({ ...prev, customer: undefined }))
+                  }}
                 >
                   <option value="" disabled>
                     Select customer
@@ -162,6 +175,9 @@ function OrdersPage() {
                     </option>
                   ))}
                 </select>
+                {formErrors.customer ? (
+                  <p className="text-xs text-red-600">{formErrors.customer}</p>
+                ) : null}
               </div>
               <div className="space-y-1">
                 <label htmlFor="mvp-order-product" className="block text-sm font-medium text-slate-700">
@@ -169,9 +185,12 @@ function OrdersPage() {
                 </label>
                 <select
                   id="mvp-order-product"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className={`w-full rounded-md border px-3 py-2 text-sm ${formErrors.product ? 'border-red-400' : 'border-slate-300'}`}
                   value={selectedProductId}
-                  onChange={(event) => setSelectedProductId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedProductId(event.target.value)
+                    setFormErrors((prev) => ({ ...prev, product: undefined }))
+                  }}
                 >
                   <option value="" disabled>
                     Select product
@@ -182,15 +201,26 @@ function OrdersPage() {
                     </option>
                   ))}
                 </select>
+                {formErrors.product ? (
+                  <p className="text-xs text-red-600">{formErrors.product}</p>
+                ) : null}
               </div>
-              <Input
-                id="mvp-order-qty"
-                label={`Quantity${selectedProduct ? ` (${selectedProduct.unit})` : ''}`}
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))}
-              />
+              <div className="space-y-1">
+                <Input
+                  id="mvp-order-qty"
+                  label={`Quantity${selectedProduct ? ` (${selectedProduct.unit})` : ''}`}
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(event) => {
+                    setQuantity(Math.max(1, Number(event.target.value || 1)))
+                    setFormErrors((prev) => ({ ...prev, quantity: undefined }))
+                  }}
+                />
+                {formErrors.quantity ? (
+                  <p className="text-xs text-red-600">{formErrors.quantity}</p>
+                ) : null}
+              </div>
               <Input
                 id="mvp-order-date"
                 label="Order Date"
@@ -207,7 +237,11 @@ function OrdersPage() {
               />
               <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Estimated Total</p>
-                <p className="font-semibold text-slate-800">{formatIDR(calculatedTotal)}</p>
+                {selectedProductId && quantity >= 1 ? (
+                  <p className="font-semibold text-slate-800">{formatIDR(calculatedTotal)}</p>
+                ) : (
+                  <p className="font-medium text-slate-400">Waiting for input</p>
+                )}
               </div>
             </div>
 
@@ -218,17 +252,12 @@ function OrdersPage() {
             ) : null}
 
             <div className="mt-4 flex items-center gap-3">
-              <Button onClick={handleAddOrder} disabled={!canSubmit}>
+              <Button onClick={handleAddOrder}>
                 Save Order
               </Button>
               <Button variant="secondary" onClick={resetForm}>
                 Reset
               </Button>
-              {!canSubmit ? (
-                <span className="text-xs text-slate-500">
-                  Select a customer and product to continue.
-                </span>
-              ) : null}
             </div>
           </Card>
         </div>
