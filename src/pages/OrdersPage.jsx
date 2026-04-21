@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -7,8 +7,12 @@ import {
   getCustomerOptions,
   getOrders,
   getProductOptions,
-  searchOrdersByCustomerName,
 } from '../features/orders/orders.service'
+import {
+  filterOrdersByCustomerName,
+  generateNextOrderId,
+  sortOrdersNewestFirst,
+} from '../features/orders/orders.logic'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
@@ -29,24 +33,75 @@ function getPaymentStatusBadge(paymentStatus) {
   return { label: 'Unpaid', className: 'bg-red-100 text-red-700' }
 }
 
+const TODAY = new Date().toISOString().slice(0, 10)
+
 function OrdersPage() {
+  const formRef = useRef(null)
+  const [orders, setOrders] = useState(() => getOrders())
   const [searchTerm, setSearchTerm] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [isFormOpen, setIsFormOpen] = useState(false)
+
   const customerOptions = getCustomerOptions()
   const productOptions = getProductOptions()
+
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState(1)
-  const [draftOrderDate, setDraftOrderDate] = useState('')
+  const [draftOrderDate, setDraftOrderDate] = useState(TODAY)
   const [draftDueDate, setDraftDueDate] = useState('')
 
-  const orders = useMemo(() => {
-    if (!searchTerm.trim()) return getOrders()
-    return searchOrdersByCustomerName(searchTerm)
-  }, [searchTerm])
+  const displayedOrders = useMemo(() => {
+    if (!searchTerm.trim()) return orders
+    return filterOrdersByCustomerName(orders, searchTerm)
+  }, [orders, searchTerm])
+
   const selectedCustomer = getCustomerById(selectedCustomerId)
   const selectedProduct =
     productOptions.find((product) => product.id === selectedProductId) || null
   const calculatedTotal = Number(quantity || 0) * Number(selectedProduct?.price || 0)
+
+  const canSubmit = selectedCustomerId && selectedProductId && quantity >= 1
+
+  function toggleForm() {
+    const opening = !isFormOpen
+    setIsFormOpen(opening)
+    if (opening) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 50)
+    }
+  }
+
+  function resetForm() {
+    setSelectedCustomerId('')
+    setSelectedProductId('')
+    setQuantity(1)
+    setDraftOrderDate(TODAY)
+    setDraftDueDate('')
+  }
+
+  function handleAddOrder() {
+    if (!canSubmit) return
+
+    const newOrder = {
+      id: generateNextOrderId(orders),
+      customerId: selectedCustomerId,
+      customerName: selectedCustomer?.name || 'Unknown Customer',
+      orderDate: draftOrderDate || TODAY,
+      dueDate: draftDueDate || draftOrderDate || TODAY,
+      orderStatus: 'pending',
+      paymentStatus: 'unpaid',
+      total: calculatedTotal,
+    }
+
+    setOrders((prev) => sortOrdersNewestFirst([newOrder, ...prev]))
+    resetForm()
+    setIsFormOpen(false)
+
+    setSuccessMessage(`Order ${newOrder.id} added successfully!`)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
 
   return (
     <div className="space-y-6">
@@ -57,7 +112,12 @@ function OrdersPage() {
             Track customer orders and monitor order status.
           </p>
         </div>
-        <Button>+ Add New Order</Button>
+        <Button
+          variant={isFormOpen ? 'secondary' : 'primary'}
+          onClick={toggleForm}
+        >
+          {isFormOpen ? 'Close Form' : '+ Add New Order'}
+        </Button>
       </header>
 
       <section className="max-w-md">
@@ -70,90 +130,112 @@ function OrdersPage() {
         />
       </section>
 
-      <Card
-        title="Add New Order (MVP Flow)"
-        subtitle="Pick customer and product first, then continue with save flow later."
-      >
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-1">
-            <label htmlFor="mvp-order-customer" className="block text-sm font-medium text-slate-700">
-              Customer
-            </label>
-            <select
-              id="mvp-order-customer"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={selectedCustomerId}
-              onChange={(event) => setSelectedCustomerId(event.target.value)}
-            >
-              <option value="" disabled>
-                Select customer
-              </option>
-              {customerOptions.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="mvp-order-product" className="block text-sm font-medium text-slate-700">
-              Product
-            </label>
-            <select
-              id="mvp-order-product"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={selectedProductId}
-              onChange={(event) => setSelectedProductId(event.target.value)}
-            >
-              <option value="" disabled>
-                Select product
-              </option>
-              {productOptions.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Input
-            id="mvp-order-qty"
-            label={`Quantity${selectedProduct ? ` (${selectedProduct.unit})` : ''}`}
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))}
-          />
-          <Input
-            id="mvp-order-date"
-            label="Order Date"
-            type="date"
-            value={draftOrderDate}
-            onChange={(event) => setDraftOrderDate(event.target.value)}
-          />
-          <Input
-            id="mvp-due-date"
-            label="Due Date"
-            type="date"
-            value={draftDueDate}
-            onChange={(event) => setDraftDueDate(event.target.value)}
-          />
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Estimated Total</p>
-            <p className="font-semibold text-slate-800">{formatIDR(calculatedTotal)}</p>
-          </div>
+      {successMessage ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
         </div>
-        {selectedCustomer ? (
-          <p className="mt-3 text-sm text-slate-600">
-            Customer address: <span className="font-medium text-slate-700">{selectedCustomer.address}</span>
-          </p>
-        ) : null}
-        <p className="mt-3 text-xs text-slate-500">
-          This flow is UI-only for MVP. Save logic will be added after backend/data layer phase.
-        </p>
-      </Card>
+      ) : null}
 
-      <Card title="Order List" subtitle="Latest orders are shown first">
-        {orders.length === 0 ? (
+      {isFormOpen ? (
+        <div ref={formRef}>
+          <Card
+            title="Add New Order"
+            subtitle="Select customer, product, and dates — then save."
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-1">
+                <label htmlFor="mvp-order-customer" className="block text-sm font-medium text-slate-700">
+                  Customer
+                </label>
+                <select
+                  id="mvp-order-customer"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={selectedCustomerId}
+                  onChange={(event) => setSelectedCustomerId(event.target.value)}
+                >
+                  <option value="" disabled>
+                    Select customer
+                  </option>
+                  {customerOptions.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="mvp-order-product" className="block text-sm font-medium text-slate-700">
+                  Product
+                </label>
+                <select
+                  id="mvp-order-product"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={selectedProductId}
+                  onChange={(event) => setSelectedProductId(event.target.value)}
+                >
+                  <option value="" disabled>
+                    Select product
+                  </option>
+                  {productOptions.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} — {formatIDR(product.price)}/{product.unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Input
+                id="mvp-order-qty"
+                label={`Quantity${selectedProduct ? ` (${selectedProduct.unit})` : ''}`}
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))}
+              />
+              <Input
+                id="mvp-order-date"
+                label="Order Date"
+                type="date"
+                value={draftOrderDate}
+                onChange={(event) => setDraftOrderDate(event.target.value)}
+              />
+              <Input
+                id="mvp-due-date"
+                label="Due Date"
+                type="date"
+                value={draftDueDate}
+                onChange={(event) => setDraftDueDate(event.target.value)}
+              />
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Estimated Total</p>
+                <p className="font-semibold text-slate-800">{formatIDR(calculatedTotal)}</p>
+              </div>
+            </div>
+
+            {selectedCustomer ? (
+              <p className="mt-3 text-sm text-slate-600">
+                Delivery address: <span className="font-medium text-slate-700">{selectedCustomer.address}</span>
+              </p>
+            ) : null}
+
+            <div className="mt-4 flex items-center gap-3">
+              <Button onClick={handleAddOrder} disabled={!canSubmit}>
+                Save Order
+              </Button>
+              <Button variant="secondary" onClick={resetForm}>
+                Reset
+              </Button>
+              {!canSubmit ? (
+                <span className="text-xs text-slate-500">
+                  Select a customer and product to continue.
+                </span>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      <Card title="Order List" subtitle={`${displayedOrders.length} order(s) — latest first`}>
+        {displayedOrders.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <p className="font-medium text-slate-700">No orders found.</p>
             <p className="mt-1 text-sm text-slate-500">
@@ -175,7 +257,7 @@ function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
+                {displayedOrders.map((order) => {
                   const orderStatus = getOrderStatusBadge(order.orderStatus)
                   const paymentStatus = getPaymentStatusBadge(order.paymentStatus)
 
