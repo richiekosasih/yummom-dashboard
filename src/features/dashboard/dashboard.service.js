@@ -1,58 +1,43 @@
-import inventoryData from '../../data/inventoryData'
-import mockOrders from '../../data/mockOrders'
-import productsData from '../../data/productsData'
-import mockExpenses from '../../data/mockExpenses'
+import { getOrders } from '../orders/orders.service'
+import { getExpenses } from '../expenses/expenses.service'
+import { getProducts } from '../products/products.service'
+import { getInventoryItems } from '../inventory/inventory.service'
 
 function sumBy(items, key) {
   return items.reduce((total, item) => total + Number(item[key] || 0), 0)
 }
 
-function normalizeInventoryItems(items) {
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    stock: Number(
-      item.stock ||
-        (Array.isArray(item.batches)
-          ? item.batches.reduce(
-              (total, batch) => total + Number(batch.quantity || 0),
-              0,
-            )
-          : 0),
-    ),
-    unit: item.unit || 'pack',
-  }))
-}
-
 export function getDashboardData() {
-  const inventoryItems = normalizeInventoryItems(inventoryData)
-  const orders = [...mockOrders]
-  const products = [...productsData]
-  const expenses = [...mockExpenses]
+  const orders = getOrders()
+  const expenses = getExpenses()
+  const products = getProducts()
+  const inventoryItems = getInventoryItems()
 
   const lowStockThreshold = 10
   const lowStockItems = inventoryItems.filter(
     (item) => item.stock <= lowStockThreshold,
   )
 
-  const revenue = sumBy(orders, 'total')
+  const totalRevenue = sumBy(orders, 'total')
   const totalExpenses = sumBy(expenses, 'amount')
-  const estimatedProfit = revenue - totalExpenses
+  const estimatedProfit = totalRevenue - totalExpenses
 
   return {
-    actions: [
-      { id: 'add-order', label: 'Add Order' },
-      { id: 'add-stock', label: 'Add Stock' },
-      { id: 'add-product', label: 'Add Product' },
-    ],
     summaryCards: [
       { id: 'total-orders', label: 'Total Orders', value: orders.length },
-      { id: 'low-stock-items', label: 'Low Stock Items', value: lowStockItems.length },
+      { id: 'total-revenue', label: 'Total Revenue', value: totalRevenue },
+      { id: 'total-expenses', label: 'Total Expenses', value: totalExpenses },
       { id: 'total-products', label: 'Total Products', value: products.length },
+      { id: 'low-stock-items', label: 'Low Stock Items', value: lowStockItems.length },
       { id: 'estimated-profit', label: 'Estimated Profit', value: estimatedProfit },
     ],
     recentOrders: orders.slice(0, 5),
-    inventoryOverview: inventoryItems,
+    inventoryOverview: inventoryItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      stock: item.stock,
+      unit: item.unit || 'pack',
+    })),
     lowStockAlerts: lowStockItems,
   }
 }

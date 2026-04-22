@@ -29,17 +29,15 @@ function getStockContext(stock) {
   }
 }
 
-function getOrderStatusContext(status) {
+function getOrderStatusContext(order) {
+  const status = order.orderStatus || order.status || 'pending'
+
   if (status === 'completed') {
     return { label: 'Completed', badgeClass: 'bg-emerald-100 text-emerald-700' }
   }
 
-  if (status === 'paid') {
-    return { label: 'Paid', badgeClass: 'bg-blue-100 text-blue-700' }
-  }
-
-  if (status === 'shipped') {
-    return { label: 'Shipped', badgeClass: 'bg-purple-100 text-purple-700' }
+  if (status === 'in_progress') {
+    return { label: 'In Progress', badgeClass: 'bg-blue-100 text-blue-700' }
   }
 
   return { label: 'Pending', badgeClass: 'bg-amber-100 text-amber-700' }
@@ -52,8 +50,10 @@ function DashboardPage() {
     dashboard.summaryCards.map((card) => [card.id, card]),
   )
   const totalOrders = summaryCardMap['total-orders']?.value ?? 0
-  const lowStockCount = summaryCardMap['low-stock-items']?.value ?? 0
+  const totalRevenue = summaryCardMap['total-revenue']?.value ?? 0
+  const totalExpenses = summaryCardMap['total-expenses']?.value ?? 0
   const totalProducts = summaryCardMap['total-products']?.value ?? 0
+  const lowStockCount = summaryCardMap['low-stock-items']?.value ?? 0
   const estimatedProfit = summaryCardMap['estimated-profit']?.value ?? 0
 
   const recommendedActions = [
@@ -120,7 +120,7 @@ function DashboardPage() {
           </p>
         </div>
         <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
-          Data Source: Mock Data
+          Data Source: Local Storage
         </div>
       </header>
 
@@ -133,21 +133,31 @@ function DashboardPage() {
         </span>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card title="Total Orders" subtitle="How many orders need handling">
           <p className="text-3xl font-bold text-slate-900">{totalOrders}</p>
           <p className="mt-1 text-xs text-slate-500">Action: review newest orders first.</p>
         </Card>
-        <Card title="Low Stock Items" subtitle="Items that may run out soon">
-          <p className="text-3xl font-bold text-red-600">{lowStockCount}</p>
-          <p className="mt-1 text-xs text-slate-500">Action: refill items marked low/critical.</p>
+        <Card title="Total Revenue" subtitle="Sum of all order totals">
+          <p className="text-3xl font-bold text-blue-700">{formatIDR(totalRevenue)}</p>
+          <p className="mt-1 text-xs text-slate-500">From all recorded orders.</p>
+        </Card>
+        <Card title="Total Expenses" subtitle="Sum of all recorded expenses">
+          <p className="text-3xl font-bold text-orange-600">{formatIDR(totalExpenses)}</p>
+          <p className="mt-1 text-xs text-slate-500">Includes all expense categories.</p>
         </Card>
         <Card title="Total Products" subtitle="Products currently listed">
           <p className="text-3xl font-bold text-slate-900">{totalProducts}</p>
           <p className="mt-1 text-xs text-slate-500">Action: keep best sellers always available.</p>
         </Card>
-        <Card title="Estimated Profit" subtitle="Revenue minus current expenses">
-          <p className="text-3xl font-bold text-emerald-700">{formatIDR(estimatedProfit)}</p>
+        <Card title="Low Stock Items" subtitle="Items that may run out soon">
+          <p className="text-3xl font-bold text-red-600">{lowStockCount}</p>
+          <p className="mt-1 text-xs text-slate-500">Action: refill items marked low/critical.</p>
+        </Card>
+        <Card title="Estimated Profit" subtitle="Revenue minus expenses">
+          <p className={`text-3xl font-bold ${estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+            {formatIDR(estimatedProfit)}
+          </p>
           <p className="mt-1 text-xs text-slate-500">Action: check costs if margin drops.</p>
         </Card>
       </section>
@@ -198,7 +208,7 @@ function DashboardPage() {
                 </thead>
                 <tbody>
                   {recentOrders.map((order) => {
-                    const statusContext = getOrderStatusContext(order.status)
+                    const statusContext = getOrderStatusContext(order)
                     return (
                       <tr key={order.id} className="border-b border-slate-100">
                         <td className="py-3 pr-3 font-medium text-slate-700">
