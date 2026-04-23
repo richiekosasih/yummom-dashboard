@@ -1,18 +1,27 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import Input from '../components/ui/Input'
 import { formatIDR } from '../utils/currency'
 import { formatDate } from '../utils/date'
+import { expensesRepository } from '../services/repositories/expenses.repository'
 import {
-  getExpensesByMonth,
-  getExpenseMonths,
-  getMonthlySummary,
-} from '../features/expenses/expenses.service'
+  sortExpensesByDateDesc,
+  filterExpensesByMonth,
+  getMonthlyTotal,
+  getBiggestCategory,
+  getAverageExpense,
+  getAvailableMonths,
+} from '../features/expenses/expenses.logic'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
+
+const CATEGORY_OPTIONS = ['Raw Materials', 'Packaging', 'Operations']
+const PAYMENT_OPTIONS = ['Cash', 'Transfer']
+const TODAY = new Date().toISOString().slice(0, 10)
 
 function formatMonthLabel(year, month) {
   return `${MONTH_NAMES[month]} ${year}`
@@ -31,9 +40,34 @@ function getCategoryBadge(category) {
   }
 }
 
-function ExpensesPage() {
-  const availableMonths = getExpenseMonths()
+function generateNextExpenseId(expenses) {
+  let max = 0
+  for (const expense of expenses) {
+    const match = expense.id?.match(/^EXP-(\d+)$/)
+    if (match) {
+      const num = parseInt(match[1], 10)
+      if (num > max) max = num
+    }
+  }
+  return `EXP-${String(max + 1).padStart(3, '0')}`
+}
 
+function ExpensesPage() {
+  const formRef = useRef(null)
+  const [allExpenses, setAllExpenses] = useState(() => expensesRepository.getAll())
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const [formMode, setFormMode] = useState(null)
+  const [selectedExpense, setSelectedExpense] = useState(null)
+
+  const [draftDate, setDraftDate] = useState(TODAY)
+  const [draftCategory, setDraftCategory] = useState(CATEGORY_OPTIONS[0])
+  const [draftDescription, setDraftDescription] = useState('')
+  const [draftAmount, setDraftAmount] = useState(0)
+  const [draftPaymentMethod, setDraftPaymentMethod] = useState(PAYMENT_OPTIONS[0])
+  const [draftNotes, setDraftNotes] = useState('')
+
+  const availableMonths = getAvailableMonths(allExpenses)
   const [selectedMonthKey, setSelectedMonthKey] = useState(
     availableMonths.length > 0
       ? `${availableMonths[0].year}-${availableMonths[0].month}`
@@ -41,12 +75,117 @@ function ExpensesPage() {
   )
 
   const [year, month] = selectedMonthKey.split('-').map(Number)
-  const expenses = getExpensesByMonth(year, month)
-  const summary = getMonthlySummary(year, month)
+  const expenses = sortExpensesByDateDesc(filterExpensesByMonth(allExpenses, year, month))
+  const filtered = filterExpensesByMonth(allExpenses, year, month)
+  const summary = {
+    totalExpenses: getMonthlyTotal(filtered),
+    totalEntries: filtered.length,
+    biggestCategory: getBiggestCategory(filtered),
+    averageExpense: getAverageExpense(filtered),
+  }
+
+  function scrollToForm() {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
+  function showSuccess(message) {
+    setSuccessMessage(message)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
+  function persistExpenses(updated) {
+    expensesRepository.saveAll(updated)
+    setAllExpenses(updated)
+  }
+
+  function resetDraft() {
+    setDraftDate(TODAY)
+    setDraftCategory(CATEGORY_OPTIONS[0])
+    setDraftDescription('')
+    setDraftAmount(0)
+    setDraftPaymentMethod(PAYMENT_OPTIONS[0])
+    setDraftNotes('')
+  }
+
+  function openAddForm() {
+    setFormMode('addExpense')
+    setSelectedExpense(null)
+    resetDraft()
+    scrollToForm()
+  }
+
+  function openEditForm(expense) {
+    setFormMode('editExpense')
+    setSelectedExpense(expense)
+    setDraftDate(expense.date)
+    setDraftCategory(expense.category)
+    setDraftDescription(expense.description)
+    setDraftAmount(expense.amount)
+    setDraftPaymentMethod(expense.paymentMethod)
+    setDraftNotes(expense.notes || '')
+    scrollToForm()
+  }
+
+  function closeForm() {
+    setFormMode(null)
+    setSelectedExpense(null)
+  }
+
+  function handleAddExpense() {
+    if (!draftDescription.trim() || draftAmount <= 0) return
+    const newExpense = {
+      id: generateNextExpenseId(allExpenses),
+      date: draftDate || TODAY,
+      category: draftCategory,
+      description: draftDescription.trim(),
+      amount: Number(draftAmount),
+      paymentMethod: draftPaymentMethod,
+      notes: draftNotes.trim(),
+    }
+    persistExpenses([...allExpenses, newExpense])
+    closeForm()
+
+    const newDate = new Date(newExpense.date)
+    const newMonthKey = `${newDate.getFullYear()}-${newDate.getMonth()}`
+    setSelectedMonthKey(newMonthKey)
+
+    showSuccess(`Expense "${newExpense.description}" added.`)
+  }
+
+  function handleEditExpense() {
+    if (!selectedExpense || !draftDescription.trim()) return
+    const updated = allExpenses.map((e) =>
+      e.id === selectedExpense.id
+        ? {
+            ...e,
+            date: draftDate || e.date,
+            category: draftCategory,
+            description: draftDescription.trim(),
+            amount: Number(draftAmount) || e.amount,
+            paymentMethod: draftPaymentMethod,
+            notes: draftNotes.trim(),
+          }
+        : e,
+    )
+    persistExpenses(updated)
+    closeForm()
+    showSuccess(`Expense "${draftDescription.trim()}" updated.`)
+  }
+
+  function handleDeleteExpense(expense) {
+    const confirmed = window.confirm(
+      `Delete expense "${expense.description}" (${formatIDR(expense.amount)})?`,
+    )
+    if (!confirmed) return
+    const updated = allExpenses.filter((e) => e.id !== expense.id)
+    persistExpenses(updated)
+    showSuccess(`Expense "${expense.description}" deleted.`)
+  }
 
   return (
     <div className="space-y-6">
-      {/* A. Page Header */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
           <h2 className="text-2xl font-bold">Expenses</h2>
@@ -54,10 +193,96 @@ function ExpensesPage() {
             Track operational costs and monthly spending for your business.
           </p>
         </div>
-        <Button>+ Add Expense</Button>
+        <Button onClick={openAddForm}>+ Add Expense</Button>
       </header>
 
-      {/* B. Month Selector */}
+      {successMessage ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </div>
+      ) : null}
+
+      {formMode ? (
+        <div ref={formRef}>
+          <Card
+            title={formMode === 'editExpense' ? 'Edit Expense' : 'Add Expense'}
+            subtitle={
+              formMode === 'editExpense'
+                ? `Editing ${selectedExpense?.description}`
+                : 'Fill in expense details.'
+            }
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                id="exp-date"
+                label="Date"
+                type="date"
+                value={draftDate}
+                onChange={(e) => setDraftDate(e.target.value)}
+              />
+              <div className="space-y-1">
+                <label htmlFor="exp-category" className="block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+                <select
+                  id="exp-category"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={draftCategory}
+                  onChange={(e) => setDraftCategory(e.target.value)}
+                >
+                  {CATEGORY_OPTIONS.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <Input
+                id="exp-description"
+                label="Description"
+                value={draftDescription}
+                onChange={(e) => setDraftDescription(e.target.value)}
+                placeholder="e.g. Pork purchase - 20kg"
+              />
+              <Input
+                id="exp-amount"
+                label="Amount (IDR)"
+                type="number"
+                min="0"
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(Number(e.target.value || 0))}
+              />
+              <div className="space-y-1">
+                <label htmlFor="exp-payment" className="block text-sm font-medium text-slate-700">
+                  Payment Method
+                </label>
+                <select
+                  id="exp-payment"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={draftPaymentMethod}
+                  onChange={(e) => setDraftPaymentMethod(e.target.value)}
+                >
+                  {PAYMENT_OPTIONS.map((pm) => (
+                    <option key={pm} value={pm}>{pm}</option>
+                  ))}
+                </select>
+              </div>
+              <Input
+                id="exp-notes"
+                label="Notes (optional)"
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
+                placeholder="e.g. Supplier name"
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <Button onClick={formMode === 'editExpense' ? handleEditExpense : handleAddExpense}>
+                {formMode === 'editExpense' ? 'Update Expense' : 'Add Expense'}
+              </Button>
+              <Button variant="secondary" onClick={closeForm}>Cancel</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
       <section className="flex items-center gap-3">
         <label
           htmlFor="month-selector"
@@ -79,7 +304,6 @@ function ExpensesPage() {
         </select>
       </section>
 
-      {/* C. Monthly Summary Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card title="Total Expenses" subtitle="Spending this month">
           <p className="text-3xl font-bold text-slate-900">
@@ -103,7 +327,6 @@ function ExpensesPage() {
         </Card>
       </section>
 
-      {/* D. Expense Table */}
       <section>
         <Card
           title="Expense Records"
@@ -169,12 +392,14 @@ function ExpensesPage() {
                           <Button
                             variant="secondary"
                             className="px-2.5 py-1 text-xs"
+                            onClick={() => openEditForm(expense)}
                           >
                             Edit
                           </Button>
                           <Button
                             variant="secondary"
                             className="px-2.5 py-1 text-xs text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteExpense(expense)}
                           >
                             Delete
                           </Button>

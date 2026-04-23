@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -13,6 +13,7 @@ import {
   generateNextOrderId,
   sortOrdersNewestFirst,
 } from '../features/orders/orders.logic'
+import { ordersRepository } from '../services/repositories/orders.repository'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
@@ -63,12 +64,21 @@ function getSortArrow(field, sortConfig) {
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
-function OrdersPage() {
+function OrdersPage({ initialAction }) {
   const formRef = useRef(null)
   const [orders, setOrders] = useState(() => getOrders())
   const [searchTerm, setSearchTerm] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
+
+  useEffect(() => {
+    if (initialAction === 'showOrderForm') {
+      setIsFormOpen(true)
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 50)
+    }
+  }, [initialAction])
 
   const customerOptions = getCustomerOptions()
   const productOptions = getProductOptions()
@@ -116,11 +126,13 @@ function OrdersPage() {
   }
 
   function updateOrderField(orderId, field, value) {
-    setOrders((prev) =>
-      prev.map((order) =>
+    setOrders((prev) => {
+      const updated = prev.map((order) =>
         order.id === orderId ? { ...order, [field]: value } : order,
-      ),
-    )
+      )
+      ordersRepository.saveAll(updated)
+      return updated
+    })
   }
 
   function resetForm() {
@@ -156,7 +168,11 @@ function OrdersPage() {
       total: calculatedTotal,
     }
 
-    setOrders((prev) => sortOrdersNewestFirst([newOrder, ...prev]))
+    setOrders((prev) => {
+      const updated = sortOrdersNewestFirst([newOrder, ...prev])
+      ordersRepository.saveAll(updated)
+      return updated
+    })
     resetForm()
     setIsFormOpen(false)
 

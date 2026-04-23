@@ -43,7 +43,7 @@ function getOrderStatusContext(order) {
   return { label: 'Pending', badgeClass: 'bg-amber-100 text-amber-700' }
 }
 
-function DashboardPage() {
+function DashboardPage({ onNavigate }) {
   const [recentOrderSort, setRecentOrderSort] = useState('dueDate')
   const dashboard = getDashboardData()
   const summaryCardMap = Object.fromEntries(
@@ -125,9 +125,9 @@ function DashboardPage() {
       </header>
 
       <section className="flex flex-wrap items-center gap-2">
-        <Button size="lg">+ Add New Order</Button>
-        <Button variant="secondary">+ Update Stock</Button>
-        <Button variant="secondary">+ Add Product</Button>
+        <Button size="lg" onClick={() => onNavigate('orders', 'showOrderForm')}>+ Add New Order</Button>
+        <Button variant="secondary" onClick={() => onNavigate('inventory', 'showStockForm')}>+ Update Stock</Button>
+        <Button variant="secondary" onClick={() => onNavigate('products', 'showProductForm')}>+ Add Product</Button>
         <span className="ml-0 text-xs text-slate-500 md:ml-2">
           Tip: Start with new orders, then update stock.
         </span>
@@ -182,7 +182,7 @@ function DashboardPage() {
                 <option value="total">Total Amount</option>
               </select>
             </div>
-            <Button variant="secondary" className="px-3 py-1.5 text-xs">
+            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => onNavigate('orders')}>
               View All Orders
             </Button>
           </div>
@@ -321,15 +321,26 @@ function DashboardPage() {
       </section>
 
       <section>
-        <Card title="Cost Snapshot" subtitle="Simple cost health check">
-          <div className="grid gap-3 text-sm md:grid-cols-2">
-            <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-slate-500">Target COGS</p>
-              <p className="text-lg font-bold text-slate-800">42.0%</p>
+        <Card title="Cost Snapshot" subtitle="Expense-to-revenue ratio from your data">
+          <div className="grid gap-3 text-sm md:grid-cols-3">
+            <div className="rounded-lg bg-blue-50 p-3">
+              <p className="text-blue-600">Revenue</p>
+              <p className="text-lg font-bold text-blue-700">{formatIDR(totalRevenue)}</p>
             </div>
-            <div className="rounded-lg bg-emerald-50 p-3">
-              <p className="text-emerald-700">Current COGS</p>
-              <p className="text-lg font-bold text-emerald-700">38.4%</p>
+            <div className="rounded-lg bg-orange-50 p-3">
+              <p className="text-orange-600">Expenses</p>
+              <p className="text-lg font-bold text-orange-700">{formatIDR(totalExpenses)}</p>
+            </div>
+            <div className={`rounded-lg p-3 ${totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'bg-red-50' : 'bg-emerald-50'}`}>
+              <p className={totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'text-red-600' : 'text-emerald-600'}>
+                Expense Ratio
+              </p>
+              <p className={`text-lg font-bold ${totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'text-red-700' : 'text-emerald-700'}`}>
+                {totalRevenue > 0 ? `${((totalExpenses / totalRevenue) * 100).toFixed(1)}%` : 'N/A'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'Above 50% — review costs' : 'Healthy ratio'}
+              </p>
             </div>
           </div>
         </Card>

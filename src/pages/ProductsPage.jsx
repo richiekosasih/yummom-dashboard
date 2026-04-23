@@ -1,11 +1,15 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { formatIDR } from '../utils/currency'
 import { formatDate } from '../utils/date'
 import { getBatchStatus } from '../features/products/products.logic'
-import { getProducts, searchProducts } from '../features/products/products.service'
+import { getProducts } from '../features/products/products.service'
+import { productsRepository } from '../services/repositories/products.repository'
+
+const UNIT_OPTIONS = ['pack', 'box', 'pcs', 'kg']
+const STATUS_OPTIONS = ['active', 'draft']
 
 function getProductStatusBadge(status) {
   if (status === 'draft') {
@@ -21,20 +25,140 @@ function getProductStatusBadge(status) {
   }
 }
 
-function ProductsPage() {
+function generateNextProductId(products) {
+  let max = 0
+  for (const product of products) {
+    const match = product.id?.match(/^PRD-(\d+)$/)
+    if (match) {
+      const num = parseInt(match[1], 10)
+      if (num > max) max = num
+    }
+  }
+  return `PRD-${String(max + 1).padStart(3, '0')}`
+}
+
+function ProductsPage({ initialAction }) {
+  const formRef = useRef(null)
+  const [products, setProducts] = useState(() => getProducts())
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedProductId, setExpandedProductId] = useState(null)
-  const products = searchTerm.trim() ? searchProducts(searchTerm) : getProducts()
-  const totalProducts = products.length
-  const activeProducts = products.filter((product) => product.status === 'active').length
-  const totalStock = products.reduce(
-    (total, product) => total + Number(product.totalStock || 0),
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const [formMode, setFormMode] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+
+  const [draftName, setDraftName] = useState('')
+  const [draftPrice, setDraftPrice] = useState(0)
+  const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
+  const [draftStatus, setDraftStatus] = useState(STATUS_OPTIONS[0])
+
+  useEffect(() => {
+    if (initialAction === 'showProductForm') {
+      openAddForm()
+    }
+  }, [initialAction])
+
+  function scrollToForm() {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
+  function showSuccess(message) {
+    setSuccessMessage(message)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
+  function openAddForm() {
+    setFormMode('addProduct')
+    setSelectedProduct(null)
+    setDraftName('')
+    setDraftPrice(0)
+    setDraftUnit(UNIT_OPTIONS[0])
+    setDraftStatus(STATUS_OPTIONS[0])
+    scrollToForm()
+  }
+
+  function openEditForm(product) {
+    setFormMode('editProduct')
+    setSelectedProduct(product)
+    setDraftName(product.name)
+    setDraftPrice(product.price)
+    setDraftUnit(product.unit)
+    setDraftStatus(product.status)
+    scrollToForm()
+  }
+
+  function closeForm() {
+    setFormMode(null)
+    setSelectedProduct(null)
+  }
+
+  function persistProducts(updated) {
+    const raw = updated.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      unit: p.unit,
+      status: p.status,
+      totalStock: p.totalStock,
+      ingredients: p.ingredients || [],
+      batches: p.batches || [],
+    }))
+    productsRepository.saveAll(raw)
+    setProducts(getProducts())
+  }
+
+  function handleAddProduct() {
+    if (!draftName.trim()) return
+    const newProduct = {
+      id: generateNextProductId(products),
+      name: draftName.trim(),
+      price: Number(draftPrice) || 0,
+      unit: draftUnit,
+      status: draftStatus,
+      totalStock: 0,
+      ingredients: [],
+      batches: [],
+    }
+    persistProducts([...products, newProduct])
+    closeForm()
+    showSuccess(`Product "${newProduct.name}" added.`)
+  }
+
+  function handleEditProduct() {
+    if (!selectedProduct || !draftName.trim()) return
+    const updated = products.map((p) =>
+      p.id === selectedProduct.id
+        ? {
+            ...p,
+            name: draftName.trim(),
+            price: Number(draftPrice) || 0,
+            unit: draftUnit,
+            status: draftStatus,
+          }
+        : p,
+    )
+    persistProducts(updated)
+    closeForm()
+    showSuccess(`Product "${draftName.trim()}" updated.`)
+  }
+
+  const filteredProducts = searchTerm.trim()
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(searchTerm.trim().toLowerCase()),
+      )
+    : products
+
+  const totalProducts = filteredProducts.length
+  const activeProducts = filteredProducts.filter((p) => p.status === 'active').length
+  const totalStock = filteredProducts.reduce(
+    (total, p) => total + Number(p.totalStock || 0),
     0,
   )
   const avgPrice =
     totalProducts > 0
-      ? products.reduce((total, product) => total + Number(product.price || 0), 0) /
-        totalProducts
+      ? filteredProducts.reduce((total, p) => total + Number(p.price || 0), 0) / totalProducts
       : 0
 
   return (
@@ -46,8 +170,81 @@ function ProductsPage() {
             Finished frozen food products sold to customers.
           </p>
         </div>
-        <Button>+ Add Product</Button>
+        <Button onClick={openAddForm}>+ Add Product</Button>
       </header>
+
+      {successMessage ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </div>
+      ) : null}
+
+      {formMode ? (
+        <div ref={formRef}>
+          <Card
+            title={formMode === 'editProduct' ? 'Edit Product' : 'Add Product'}
+            subtitle={
+              formMode === 'editProduct'
+                ? `Editing ${selectedProduct?.name}`
+                : 'Fill in product details.'
+            }
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                id="prd-name"
+                label="Product Name"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="e.g. Pork Nuggets"
+              />
+              <Input
+                id="prd-price"
+                label="Selling Price (IDR)"
+                type="number"
+                min="0"
+                value={draftPrice}
+                onChange={(e) => setDraftPrice(Number(e.target.value || 0))}
+              />
+              <div className="space-y-1">
+                <label htmlFor="prd-unit" className="block text-sm font-medium text-slate-700">
+                  Unit
+                </label>
+                <select
+                  id="prd-unit"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={draftUnit}
+                  onChange={(e) => setDraftUnit(e.target.value)}
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="prd-status" className="block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  id="prd-status"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={draftStatus}
+                  onChange={(e) => setDraftStatus(e.target.value)}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <Button onClick={formMode === 'editProduct' ? handleEditProduct : handleAddProduct}>
+                {formMode === 'editProduct' ? 'Update Product' : 'Add Product'}
+              </Button>
+              <Button variant="secondary" onClick={closeForm}>Cancel</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <Card
         title="Finished Goods Catalog"
@@ -82,7 +279,7 @@ function ProductsPage() {
           </div>
         </div>
 
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <p className="font-medium text-slate-700">No products available yet.</p>
             <p className="mt-1 text-sm text-slate-500">
@@ -104,7 +301,7 @@ function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => {
+                {filteredProducts.map((product) => {
                   const status = getProductStatusBadge(product.status)
                   const isExpanded = expandedProductId === product.id
 
@@ -143,7 +340,10 @@ function ProductsPage() {
                           <Button
                             variant="secondary"
                             className="px-3 py-1.5 text-xs"
-                            onClick={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openEditForm(product)
+                            }}
                           >
                             Edit
                           </Button>
