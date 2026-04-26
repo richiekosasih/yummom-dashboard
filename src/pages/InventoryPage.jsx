@@ -25,11 +25,11 @@ function InventoryPage({ initialAction }) {
   const [selectedItem, setSelectedItem] = useState(null)
 
   const [stockItemId, setStockItemId] = useState('')
-  const [stockAmount, setStockAmount] = useState(0)
+  const [stockAmount, setStockAmount] = useState('')
 
   const [draftName, setDraftName] = useState('')
   const [draftCategory, setDraftCategory] = useState(CATEGORY_OPTIONS[0])
-  const [draftStock, setDraftStock] = useState(0)
+  const [draftStock, setDraftStock] = useState('')
   const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
   const [draftPurchaseDate, setDraftPurchaseDate] = useState(TODAY)
   const [draftExpiryDate, setDraftExpiryDate] = useState('')
@@ -57,7 +57,7 @@ function InventoryPage({ initialAction }) {
     setFormMode('addStock')
     setSelectedItem(null)
     setStockItemId('')
-    setStockAmount(0)
+    setStockAmount('')
     scrollToForm()
   }
 
@@ -88,7 +88,7 @@ function InventoryPage({ initialAction }) {
   function resetItemDraft() {
     setDraftName('')
     setDraftCategory(CATEGORY_OPTIONS[0])
-    setDraftStock(0)
+    setDraftStock('')
     setDraftUnit(UNIT_OPTIONS[0])
     setDraftPurchaseDate(TODAY)
     setDraftExpiryDate('')
@@ -224,7 +224,7 @@ function InventoryPage({ initialAction }) {
                 type="number"
                 min="1"
                 value={stockAmount}
-                onChange={(e) => setStockAmount(Math.max(0, Number(e.target.value || 0)))}
+                onChange={(e) => setStockAmount(e.target.value)}
               />
             </div>
             <div className="mt-4 flex items-center gap-3">
@@ -270,7 +270,7 @@ function InventoryPage({ initialAction }) {
                 type="number"
                 min="0"
                 value={draftStock}
-                onChange={(e) => setDraftStock(Number(e.target.value || 0))}
+                onChange={(e) => setDraftStock(e.target.value)}
               />
               <div className="space-y-1">
                 <label htmlFor="inv-unit" className="block text-sm font-medium text-slate-700">

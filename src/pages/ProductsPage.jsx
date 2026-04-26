@@ -38,14 +38,14 @@ function ProductsPage({ initialAction }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   const [draftName, setDraftName] = useState('')
-  const [draftPrice, setDraftPrice] = useState(0)
+  const [draftPrice, setDraftPrice] = useState('')
   const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
   const [draftStatus, setDraftStatus] = useState(STATUS_OPTIONS[0])
 
   const [draftBatchId, setDraftBatchId] = useState('')
   const [draftBatchProdDate, setDraftBatchProdDate] = useState(TODAY)
   const [draftBatchExpiryDate, setDraftBatchExpiryDate] = useState('')
-  const [draftBatchQuantity, setDraftBatchQuantity] = useState(0)
+  const [draftBatchQuantity, setDraftBatchQuantity] = useState('')
 
   useEffect(() => {
     if (initialAction === 'showProductForm') {
@@ -68,14 +68,14 @@ function ProductsPage({ initialAction }) {
     setDraftBatchId(generateNextBatchId(products))
     setDraftBatchProdDate(TODAY)
     setDraftBatchExpiryDate('')
-    setDraftBatchQuantity(0)
+    setDraftBatchQuantity('')
   }
 
   function openAddForm() {
     setFormMode('addProduct')
     setSelectedProduct(null)
     setDraftName('')
-    setDraftPrice(0)
+    setDraftPrice('')
     setDraftUnit(UNIT_OPTIONS[0])
     setDraftStatus(STATUS_OPTIONS[0])
     resetBatchDraft()
@@ -275,7 +275,7 @@ function ProductsPage({ initialAction }) {
                   type="number"
                   min="0"
                   value={draftPrice}
-                  onChange={(e) => setDraftPrice(Number(e.target.value || 0))}
+                  onChange={(e) => setDraftPrice(e.target.value)}
                 />
                 <div className="space-y-1">
                   <label htmlFor="prd-unit" className="block text-sm font-medium text-slate-700">
@@ -359,7 +359,7 @@ function ProductsPage({ initialAction }) {
                     type="number"
                     min="0"
                     value={draftBatchQuantity}
-                    onChange={(e) => setDraftBatchQuantity(Math.max(0, Number(e.target.value || 0)))}
+                    onChange={(e) => setDraftBatchQuantity(e.target.value)}
                   />
                   <Input
                     id="batch-prod-date"

@@ -4,19 +4,9 @@ import products from '../../data/products'
 
 const KEY = STORAGE_KEYS.products
 
-function needsBatchMigration(items) {
-  return items.some((item) => !Array.isArray(item.batches))
-}
-
 function getAll() {
   const items = localStorageClient.read(KEY, [])
-  if (items.length > 0) {
-    if (needsBatchMigration(items)) {
-      localStorageClient.write(KEY, products)
-      return products
-    }
-    return items
-  }
+  if (items.length > 0) return items
   localStorageClient.write(KEY, products)
   return products
 }

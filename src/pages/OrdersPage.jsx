@@ -95,7 +95,7 @@ function OrdersPage({ initialAction }) {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState('')
   const [draftOrderDate, setDraftOrderDate] = useState(TODAY)
   const [draftDueDate, setDraftDueDate] = useState('')
   const [formErrors, setFormErrors] = useState({})
@@ -159,7 +159,7 @@ function OrdersPage({ initialAction }) {
   function resetForm() {
     setSelectedCustomerId('')
     setSelectedProductId('')
-    setQuantity(1)
+    setQuantity('')
     setDraftOrderDate(TODAY)
     setDraftDueDate('')
     setFormErrors({})
@@ -202,7 +202,8 @@ function OrdersPage({ initialAction }) {
     }
 
     const currentBatches = Array.isArray(targetProduct.batches) ? targetProduct.batches : []
-    const updatedBatches = deductStockFIFO(currentBatches, quantity)
+    const orderQty = Number(quantity) || 0
+    const updatedBatches = deductStockFIFO(currentBatches, orderQty)
     if (!updatedBatches) {
       const available = currentBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       setFormErrors({
@@ -245,7 +246,7 @@ function OrdersPage({ initialAction }) {
       customerName,
       productId: selectedProductId,
       productName: targetProduct.name,
-      quantity,
+      quantity: orderQty,
       orderDate: draftOrderDate || TODAY,
       dueDate: draftDueDate || draftOrderDate || TODAY,
       orderStatus: 'pending',
@@ -452,7 +453,7 @@ function OrdersPage({ initialAction }) {
                   min="1"
                   value={quantity}
                   onChange={(event) => {
-                    setQuantity(Math.max(1, Number(event.target.value || 1)))
+                    setQuantity(event.target.value)
                     setFormErrors((prev) => ({ ...prev, quantity: undefined }))
                   }}
                 />

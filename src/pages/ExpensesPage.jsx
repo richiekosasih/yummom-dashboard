@@ -52,7 +52,7 @@ function ExpensesPage() {
   const [draftDate, setDraftDate] = useState(TODAY)
   const [draftCategory, setDraftCategory] = useState(CATEGORY_OPTIONS[0])
   const [draftDescription, setDraftDescription] = useState('')
-  const [draftAmount, setDraftAmount] = useState(0)
+  const [draftAmount, setDraftAmount] = useState('')
   const [draftPaymentMethod, setDraftPaymentMethod] = useState(PAYMENT_OPTIONS[0])
   const [draftNotes, setDraftNotes] = useState('')
 
@@ -93,7 +93,7 @@ function ExpensesPage() {
     setDraftDate(TODAY)
     setDraftCategory(CATEGORY_OPTIONS[0])
     setDraftDescription('')
-    setDraftAmount(0)
+    setDraftAmount('')
     setDraftPaymentMethod(PAYMENT_OPTIONS[0])
     setDraftNotes('')
   }
@@ -237,7 +237,7 @@ function ExpensesPage() {
                 type="number"
                 min="0"
                 value={draftAmount}
-                onChange={(e) => setDraftAmount(Number(e.target.value || 0))}
+                onChange={(e) => setDraftAmount(e.target.value)}
               />
               <div className="space-y-1">
                 <label htmlFor="exp-payment" className="block text-sm font-medium text-slate-700">
