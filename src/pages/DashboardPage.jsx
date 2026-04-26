@@ -53,44 +53,78 @@ function DashboardPage({ onNavigate }) {
     totalProducts,
     lowStockCount,
     estimatedProfit,
+    overdueOrderCount,
+    biggestExpenseCategory,
   } = dashboard
 
-  const recommendedActions = [
-    {
-      id: 'check-low-stock',
-      title:
-        lowStockCount > 0
-          ? `Restock ${lowStockCount} low-stock item(s)`
-          : 'No urgent stock refill needed',
-      description:
-        lowStockCount > 0
-          ? 'Prioritize items marked low or critical to avoid missed orders.'
-          : 'Inventory looks healthy. Keep monitoring daily.',
-      toneClass:
-        lowStockCount > 0
-          ? 'border-amber-200 bg-amber-50 text-amber-800'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    },
-    {
-      id: 'follow-up-orders',
-      title: 'Review newest customer orders',
-      description:
-        'Confirm payment and shipment status so customers get updates quickly.',
-      toneClass: 'border-slate-200 bg-slate-50 text-slate-700',
-    },
-    {
-      id: 'check-profit',
-      title: 'Check today’s profit trend',
-      description:
-        estimatedProfit < 0
-          ? 'Current estimate is negative. Review expenses and pricing.'
-          : 'Profit estimate is positive. Keep margins stable.',
-      toneClass:
-        estimatedProfit < 0
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    },
-  ]
+  const expenseRatio = totalRevenue > 0 ? totalExpenses / totalRevenue : null
+  const expenseRatioContext = (() => {
+    if (expenseRatio === null) return { label: 'N/A', bgClass: 'bg-slate-50', textClass: 'text-slate-600', boldClass: 'text-slate-700', badgeClass: 'bg-slate-100 text-slate-700', message: 'No revenue recorded yet.' }
+    if (expenseRatio > 1) return { label: 'Critical', bgClass: 'bg-red-50', textClass: 'text-red-600', boldClass: 'text-red-700', badgeClass: 'bg-red-100 text-red-700', message: 'Spending more than you earn. Reduce costs immediately.' }
+    if (expenseRatio > 0.5) return { label: 'Warning', bgClass: 'bg-amber-50', textClass: 'text-amber-600', boldClass: 'text-amber-700', badgeClass: 'bg-amber-100 text-amber-700', message: 'Expenses are eating into your margins. Review costs.' }
+    return { label: 'Good', bgClass: 'bg-emerald-50', textClass: 'text-emerald-600', boldClass: 'text-emerald-700', badgeClass: 'bg-emerald-100 text-emerald-700', message: 'Expenses are well within revenue. Keep it up.' }
+  })()
+
+  const revenueVsExpenseInsight = (() => {
+    if (totalRevenue === 0 && totalExpenses === 0) return null
+    if (totalRevenue === 0) return 'No revenue yet, but expenses are accumulating.'
+    if (totalExpenses === 0) return 'No expenses recorded. All revenue is profit.'
+    if (totalExpenses > totalRevenue) {
+      const multiplier = (totalExpenses / totalRevenue).toFixed(1)
+      return `Expenses are ${multiplier}x higher than revenue.`
+    }
+    const coverage = (totalRevenue / totalExpenses).toFixed(1)
+    return `Revenue covers expenses ${coverage}x over.`
+  })()
+
+  const lowStockNames = dashboard.lowStockAlerts
+    .slice(0, 3)
+    .map((i) => i.name)
+    .join(', ')
+  const lowStockSuffix = lowStockCount > 3 ? ` and ${lowStockCount - 3} more` : ''
+
+  const actionItems = [
+    lowStockCount > 0
+      ? {
+          id: 'check-low-stock',
+          title: `Restock ${lowStockCount} low-stock item(s)`,
+          description: `Priority: ${lowStockNames}${lowStockSuffix}.`,
+          toneClass: 'border-amber-200 bg-amber-50 text-amber-800',
+        }
+      : null,
+    overdueOrderCount > 0
+      ? {
+          id: 'follow-up-overdue',
+          title: `Follow up on ${overdueOrderCount} overdue order(s)`,
+          description: 'Delayed orders risk customer trust and repeat business. Update their status or contact customers.',
+          toneClass: 'border-red-200 bg-red-50 text-red-700',
+        }
+      : null,
+    estimatedProfit < 0
+      ? {
+          id: 'review-expenses',
+          title: `Reduce loss of ${formatIDR(Math.abs(estimatedProfit))}`,
+          description: `Expenses (${formatIDR(totalExpenses)}) exceed revenue (${formatIDR(totalRevenue)}).${
+            biggestExpenseCategory
+              ? ` Biggest category: ${biggestExpenseCategory.name} (${formatIDR(biggestExpenseCategory.amount)}).`
+              : ''
+          } Review pricing or cut costs.`,
+          toneClass: 'border-red-200 bg-red-50 text-red-700',
+        }
+      : null,
+  ].filter(Boolean)
+
+  const recommendedActions =
+    actionItems.length > 0
+      ? actionItems
+      : [
+          {
+            id: 'all-good',
+            title: 'No urgent actions today',
+            description: 'Stock is healthy, no overdue orders, and profit is positive. Keep it up!',
+            toneClass: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+          },
+        ]
 
   const normalizedOrders = dashboard.recentOrders.map((order) => ({
     ...order,
@@ -151,15 +185,36 @@ function DashboardPage({ onNavigate }) {
         </Card>
         <Card title="Low Stock Items" subtitle="Items that may run out soon">
           <p className="text-3xl font-bold text-red-600">{lowStockCount}</p>
-          <p className="mt-1 text-xs text-slate-500">Action: refill items marked low/critical.</p>
+          {lowStockCount > 0 ? (
+            <p className="mt-1 text-xs text-slate-600">
+              {lowStockNames}{lowStockSuffix}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">All stock levels are healthy.</p>
+          )}
         </Card>
         <Card title="Estimated Profit" subtitle="Revenue minus expenses">
           <p className={`text-3xl font-bold ${estimatedProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
             {formatIDR(estimatedProfit)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Action: check costs if margin drops.</p>
+          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+            estimatedProfit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {estimatedProfit >= 0 ? 'Profit' : 'Loss'}
+          </span>
         </Card>
       </section>
+
+      {overdueOrderCount > 0 ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-sm font-semibold text-red-800">
+            {overdueOrderCount} overdue order(s) need attention
+          </p>
+          <p className="mt-1 text-xs text-red-600">
+            These orders are past their due date and not yet completed.
+          </p>
+        </div>
+      ) : null}
 
       <section>
         <Card title="Recent Orders" subtitle="Orders to review and process first">
@@ -329,19 +384,32 @@ function DashboardPage({ onNavigate }) {
             <div className="rounded-lg bg-orange-50 p-3">
               <p className="text-orange-600">Expenses</p>
               <p className="text-lg font-bold text-orange-700">{formatIDR(totalExpenses)}</p>
+              {biggestExpenseCategory ? (
+                <p className="mt-1 text-xs text-orange-600">
+                  Biggest: {biggestExpenseCategory.name} ({formatIDR(biggestExpenseCategory.amount)})
+                </p>
+              ) : null}
             </div>
-            <div className={`rounded-lg p-3 ${totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'bg-red-50' : 'bg-emerald-50'}`}>
-              <p className={totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'text-red-600' : 'text-emerald-600'}>
-                Expense Ratio
-              </p>
-              <p className={`text-lg font-bold ${totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'text-red-700' : 'text-emerald-700'}`}>
-                {totalRevenue > 0 ? `${((totalExpenses / totalRevenue) * 100).toFixed(1)}%` : 'N/A'}
+            <div className={`rounded-lg p-3 ${expenseRatioContext.bgClass}`}>
+              <div className="flex items-center gap-2">
+                <p className={expenseRatioContext.textClass}>Expense Ratio</p>
+                <span className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${expenseRatioContext.badgeClass}`}>
+                  {expenseRatioContext.label}
+                </span>
+              </div>
+              <p className={`text-lg font-bold ${expenseRatioContext.boldClass}`}>
+                {expenseRatio !== null ? `${(expenseRatio * 100).toFixed(1)}%` : 'N/A'}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {totalRevenue > 0 && totalExpenses / totalRevenue > 0.5 ? 'Above 50% — review costs' : 'Healthy ratio'}
+                {expenseRatioContext.message}
               </p>
             </div>
           </div>
+          {revenueVsExpenseInsight ? (
+            <p className="mt-3 text-xs text-slate-500">
+              {revenueVsExpenseInsight}
+            </p>
+          ) : null}
         </Card>
       </section>
     </div>
