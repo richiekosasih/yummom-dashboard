@@ -143,6 +143,17 @@ function OrdersPage({ initialAction }) {
     })
   }
 
+  function handleDeleteOrder(order) {
+    if (!window.confirm(`Delete order ${order.id}? This cannot be undone.`)) return
+    setOrders((prev) => {
+      const updated = prev.filter((o) => o.id !== order.id)
+      ordersRepository.saveAll(updated)
+      return updated
+    })
+    setSuccessMessage(`Order ${order.id} deleted.`)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+
   function resetForm() {
     setSelectedCustomerId('')
     setSelectedProductId('')
@@ -490,6 +501,7 @@ function OrdersPage({ initialAction }) {
                       {col.label}{getSortArrow(col.field, sortConfig)}
                     </th>
                   ))}
+                  <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -543,6 +555,15 @@ function OrdersPage({ initialAction }) {
                       </td>
                       <td className="py-3 text-right font-semibold text-slate-700">
                         {formatIDR(order.total)}
+                      </td>
+                      <td className="py-3 pl-3 text-right">
+                        <button
+                          type="button"
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                          onClick={() => handleDeleteOrder(order)}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   )

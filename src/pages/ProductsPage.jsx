@@ -144,6 +144,15 @@ function ProductsPage({ initialAction }) {
     showSuccess(`Product "${draftName.trim()}" updated.`)
   }
 
+  function handleDeleteProduct(product) {
+    if (!window.confirm(`Delete "${product.name}"? This cannot be undone.`)) return
+    const updated = products.filter((p) => p.id !== product.id)
+    persistProducts(updated)
+    if (selectedProduct?.id === product.id) closeForm()
+    if (expandedProductId === product.id) setExpandedProductId(null)
+    showSuccess(`Product "${product.name}" deleted.`)
+  }
+
   const filteredProducts = searchTerm.trim()
     ? products.filter((p) =>
         p.name.toLowerCase().includes(searchTerm.trim().toLowerCase()),
@@ -337,16 +346,28 @@ function ProductsPage({ initialAction }) {
                           </span>
                         </td>
                         <td className="py-3 text-right">
-                          <Button
-                            variant="secondary"
-                            className="px-3 py-1.5 text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openEditForm(product)
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="secondary"
+                              className="px-3 py-1.5 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEditForm(product)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <button
+                              type="button"
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDeleteProduct(product)
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {isExpanded ? (

@@ -168,6 +168,14 @@ function InventoryPage({ initialAction }) {
     showSuccess(`Item "${draftName.trim()}" updated.`)
   }
 
+  function handleDeleteItem(item) {
+    if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) return
+    const updated = items.filter((i) => i.id !== item.id)
+    persistItems(updated)
+    if (selectedItem?.id === item.id) closeForm()
+    showSuccess(`Item "${item.name}" deleted.`)
+  }
+
   const filteredItems = searchTerm.trim()
     ? items.filter((item) =>
         item.name.toLowerCase().includes(searchTerm.trim().toLowerCase()),
@@ -388,13 +396,22 @@ function InventoryPage({ initialAction }) {
                           </span>
                       </td>
                       <td className="py-3 text-right">
-                        <Button
-                          variant="secondary"
-                          className="px-3 py-1.5 text-xs"
-                          onClick={() => openEditItemForm(item)}
-                        >
-                          Edit
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="secondary"
+                            className="px-3 py-1.5 text-xs"
+                            onClick={() => openEditItemForm(item)}
+                          >
+                            Edit
+                          </Button>
+                          <button
+                            type="button"
+                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                            onClick={() => handleDeleteItem(item)}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
