@@ -30,14 +30,8 @@ export function searchOrdersByCustomerName(keyword) {
   return filterOrdersByCustomerName(getOrders(), keyword)
 }
 
-export function getCustomerOptions() {
+export function getAllCustomers() {
   return customersData
-    .filter((customer) => customer.isActive)
-    .map((customer) => ({ id: customer.id, name: customer.name }))
-}
-
-export function getCustomerById(customerId) {
-  return customersData.find((customer) => customer.id === customerId) || null
 }
 
 export function getProductOptions() {

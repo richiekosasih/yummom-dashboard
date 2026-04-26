@@ -3,8 +3,7 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import {
-  getCustomerById,
-  getCustomerOptions,
+  getAllCustomers,
   getOrders,
   getProductOptions,
 } from '../features/orders/orders.service'
@@ -80,7 +79,16 @@ function OrdersPage({ initialAction }) {
     }
   }, [initialAction])
 
-  const customerOptions = getCustomerOptions()
+  const [customers, setCustomers] = useState(() => getAllCustomers())
+  const [customerMode, setCustomerMode] = useState('existing')
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
+  const [newCustomerAddress, setNewCustomerAddress] = useState('')
+  const [newCustomerNotes, setNewCustomerNotes] = useState('')
+
+  const customerOptions = customers
+    .filter((c) => c.isActive)
+    .map((c) => ({ id: c.id, name: c.name }))
   const productOptions = getProductOptions()
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -102,7 +110,7 @@ function OrdersPage({ initialAction }) {
     return sortConfig.direction === 'desc' ? sorted.reverse() : sorted
   }, [orders, searchTerm, sortConfig])
 
-  const selectedCustomer = getCustomerById(selectedCustomerId)
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) || null
   const selectedProduct =
     productOptions.find((product) => product.id === selectedProductId) || null
   const calculatedTotal = Number(quantity || 0) * Number(selectedProduct?.price || 0)
@@ -142,11 +150,35 @@ function OrdersPage({ initialAction }) {
     setDraftOrderDate(TODAY)
     setDraftDueDate('')
     setFormErrors({})
+    setCustomerMode('existing')
+    setNewCustomerName('')
+    setNewCustomerPhone('')
+    setNewCustomerAddress('')
+    setNewCustomerNotes('')
+  }
+
+  function generateNextCustomerId() {
+    let max = 0
+    for (const c of customers) {
+      const match = c.id?.match(/^CUS-(\d+)$/)
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (num > max) max = num
+      }
+    }
+    return `CUS-${String(max + 1).padStart(3, '0')}`
   }
 
   function handleAddOrder() {
     const errors = {}
-    if (!selectedCustomerId) errors.customer = 'Please select a customer.'
+
+    if (customerMode === 'existing') {
+      if (!selectedCustomerId) errors.customer = 'Please select a customer.'
+    } else {
+      if (!newCustomerName.trim()) errors.customerName = 'Customer name is required.'
+      if (!newCustomerAddress.trim()) errors.customerAddress = 'Address is required.'
+    }
+
     if (!selectedProductId) errors.product = 'Please select a product.'
     if (quantity < 1) errors.quantity = 'Quantity must be at least 1.'
 
@@ -157,10 +189,28 @@ function OrdersPage({ initialAction }) {
 
     setFormErrors({})
 
+    let customerId = selectedCustomerId
+    let customerName = selectedCustomer?.name || 'Unknown Customer'
+
+    if (customerMode === 'new') {
+      const newId = generateNextCustomerId()
+      const newCustomer = {
+        id: newId,
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim(),
+        address: newCustomerAddress.trim(),
+        notes: newCustomerNotes.trim(),
+        isActive: true,
+      }
+      setCustomers((prev) => [...prev, newCustomer])
+      customerId = newId
+      customerName = newCustomer.name
+    }
+
     const newOrder = {
       id: generateNextOrderId(orders),
-      customerId: selectedCustomerId,
-      customerName: selectedCustomer?.name || 'Unknown Customer',
+      customerId,
+      customerName,
       orderDate: draftOrderDate || TODAY,
       dueDate: draftDueDate || draftOrderDate || TODAY,
       orderStatus: 'pending',
@@ -219,33 +269,120 @@ function OrdersPage({ initialAction }) {
             title="Add New Order"
             subtitle="Select customer, product, and dates — then save."
           >
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="space-y-1">
-                <label htmlFor="mvp-order-customer" className="block text-sm font-medium text-slate-700">
-                  Customer
-                </label>
-                <select
-                  id="mvp-order-customer"
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${formErrors.customer ? 'border-red-400' : 'border-slate-300'}`}
-                  value={selectedCustomerId}
-                  onChange={(event) => {
-                    setSelectedCustomerId(event.target.value)
-                    setFormErrors((prev) => ({ ...prev, customer: undefined }))
-                  }}
-                >
-                  <option value="" disabled>
-                    Select customer
-                  </option>
-                  {customerOptions.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.customer ? (
-                  <p className="text-xs text-red-600">{formErrors.customer}</p>
-                ) : null}
+            <div className="mb-4 space-y-3">
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-slate-700">Customer Type</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerMode('existing')}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      customerMode === 'existing'
+                        ? 'bg-emerald-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Existing Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomerMode('new')}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      customerMode === 'new'
+                        ? 'bg-emerald-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    New Customer
+                  </button>
+                </div>
               </div>
+
+              {customerMode === 'existing' ? (
+                <div className="max-w-sm space-y-1">
+                  <label htmlFor="mvp-order-customer" className="block text-sm font-medium text-slate-700">
+                    Customer
+                  </label>
+                  <select
+                    id="mvp-order-customer"
+                    className={`w-full rounded-md border px-3 py-2 text-sm ${formErrors.customer ? 'border-red-400' : 'border-slate-300'}`}
+                    value={selectedCustomerId}
+                    onChange={(event) => {
+                      setSelectedCustomerId(event.target.value)
+                      setFormErrors((prev) => ({ ...prev, customer: undefined }))
+                    }}
+                  >
+                    <option value="" disabled>
+                      Select customer
+                    </option>
+                    {customerOptions.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.customer ? (
+                    <p className="text-xs text-red-600">{formErrors.customer}</p>
+                  ) : null}
+                  {selectedCustomer ? (
+                    <p className="mt-2 text-sm text-slate-600">
+                      Delivery address: <span className="font-medium text-slate-700">{selectedCustomer.address}</span>
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Input
+                      id="mvp-new-customer-name"
+                      label="Customer Name *"
+                      placeholder="e.g. Reseller D"
+                      value={newCustomerName}
+                      onChange={(e) => {
+                        setNewCustomerName(e.target.value)
+                        setFormErrors((prev) => ({ ...prev, customerName: undefined }))
+                      }}
+                    />
+                    {formErrors.customerName ? (
+                      <p className="text-xs text-red-600">{formErrors.customerName}</p>
+                    ) : null}
+                  </div>
+                  <Input
+                    id="mvp-new-customer-phone"
+                    label="Phone"
+                    placeholder="e.g. 0812-xxxx-xxxx"
+                    value={newCustomerPhone}
+                    onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  />
+                  <div className="space-y-1 md:col-span-2">
+                    <Input
+                      id="mvp-new-customer-address"
+                      label="Address *"
+                      placeholder="e.g. Jl. Merdeka No. 10, Jakarta"
+                      value={newCustomerAddress}
+                      onChange={(e) => {
+                        setNewCustomerAddress(e.target.value)
+                        setFormErrors((prev) => ({ ...prev, customerAddress: undefined }))
+                      }}
+                    />
+                    {formErrors.customerAddress ? (
+                      <p className="text-xs text-red-600">{formErrors.customerAddress}</p>
+                    ) : null}
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      id="mvp-new-customer-notes"
+                      label="Notes (optional)"
+                      placeholder="e.g. Preferred delivery time"
+                      value={newCustomerNotes}
+                      onChange={(e) => setNewCustomerNotes(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
               <div className="space-y-1">
                 <label htmlFor="mvp-order-product" className="block text-sm font-medium text-slate-700">
                   Product
@@ -311,12 +448,6 @@ function OrdersPage({ initialAction }) {
                 )}
               </div>
             </div>
-
-            {selectedCustomer ? (
-              <p className="mt-3 text-sm text-slate-600">
-                Delivery address: <span className="font-medium text-slate-700">{selectedCustomer.address}</span>
-              </p>
-            ) : null}
 
             <div className="mt-4 flex items-center gap-3">
               <Button onClick={handleAddOrder}>
