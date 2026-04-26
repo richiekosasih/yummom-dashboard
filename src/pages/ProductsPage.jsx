@@ -10,6 +10,7 @@ import { productsRepository } from '../services/repositories/products.repository
 
 const UNIT_OPTIONS = ['pack', 'box', 'pcs', 'kg']
 const STATUS_OPTIONS = ['active', 'draft']
+const TODAY = new Date().toISOString().slice(0, 10)
 
 function getProductStatusBadge(status) {
   if (status === 'draft') {
@@ -52,6 +53,11 @@ function ProductsPage({ initialAction }) {
   const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
   const [draftStatus, setDraftStatus] = useState(STATUS_OPTIONS[0])
 
+  const [draftBatchId, setDraftBatchId] = useState('')
+  const [draftBatchProdDate, setDraftBatchProdDate] = useState(TODAY)
+  const [draftBatchExpiryDate, setDraftBatchExpiryDate] = useState('')
+  const [draftBatchQuantity, setDraftBatchQuantity] = useState(0)
+
   useEffect(() => {
     if (initialAction === 'showProductForm') {
       openAddForm()
@@ -69,6 +75,14 @@ function ProductsPage({ initialAction }) {
     setTimeout(() => setSuccessMessage(''), 3000)
   }
 
+  function resetBatchDraft(product) {
+    const batchCount = product?.batches?.length || 0
+    setDraftBatchId(product ? `${product.id}-B${batchCount + 1}` : '')
+    setDraftBatchProdDate(TODAY)
+    setDraftBatchExpiryDate('')
+    setDraftBatchQuantity(0)
+  }
+
   function openAddForm() {
     setFormMode('addProduct')
     setSelectedProduct(null)
@@ -76,6 +90,7 @@ function ProductsPage({ initialAction }) {
     setDraftPrice(0)
     setDraftUnit(UNIT_OPTIONS[0])
     setDraftStatus(STATUS_OPTIONS[0])
+    resetBatchDraft(null)
     scrollToForm()
   }
 
@@ -111,15 +126,25 @@ function ProductsPage({ initialAction }) {
 
   function handleAddProduct() {
     if (!draftName.trim()) return
+    const newId = generateNextProductId(products)
+    const batches = []
+    if (draftBatchQuantity > 0) {
+      batches.push({
+        id: draftBatchId.trim() || `${newId}-B1`,
+        productionDate: draftBatchProdDate || null,
+        expiryDate: draftBatchExpiryDate || null,
+        quantity: Number(draftBatchQuantity),
+      })
+    }
     const newProduct = {
-      id: generateNextProductId(products),
+      id: newId,
       name: draftName.trim(),
       price: Number(draftPrice) || 0,
       unit: draftUnit,
       status: draftStatus,
-      totalStock: 0,
+      totalStock: batches.reduce((sum, b) => sum + b.quantity, 0),
       ingredients: [],
-      batches: [],
+      batches,
     }
     persistProducts([...products, newProduct])
     closeForm()
@@ -153,6 +178,43 @@ function ProductsPage({ initialAction }) {
     showSuccess(`Product "${product.name}" deleted.`)
   }
 
+  function openAddBatchForm(product) {
+    setFormMode('addBatch')
+    setSelectedProduct(product)
+    resetBatchDraft(product)
+    scrollToForm()
+  }
+
+  function openGlobalBatchForm() {
+    setFormMode('addBatch')
+    setSelectedProduct(null)
+    resetBatchDraft(null)
+    scrollToForm()
+  }
+
+  function handleAddBatch() {
+    if (!selectedProduct || draftBatchQuantity <= 0) return
+    const newBatch = {
+      id: draftBatchId.trim() || `${selectedProduct.id}-B${(selectedProduct.batches?.length || 0) + 1}`,
+      productionDate: draftBatchProdDate || null,
+      expiryDate: draftBatchExpiryDate || null,
+      quantity: Number(draftBatchQuantity),
+    }
+    const updated = products.map((p) => {
+      if (p.id !== selectedProduct.id) return p
+      const newBatches = [...(p.batches || []), newBatch]
+      return {
+        ...p,
+        batches: newBatches,
+        totalStock: newBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+      }
+    })
+    persistProducts(updated)
+    closeForm()
+    setExpandedProductId(selectedProduct.id)
+    showSuccess(`Batch "${newBatch.id}" added to ${selectedProduct.name}.`)
+  }
+
   const filteredProducts = searchTerm.trim()
     ? products.filter((p) =>
         p.name.toLowerCase().includes(searchTerm.trim().toLowerCase()),
@@ -179,7 +241,10 @@ function ProductsPage({ initialAction }) {
             Finished frozen food products sold to customers.
           </p>
         </div>
-        <Button onClick={openAddForm}>+ Add Product</Button>
+        <div className="flex gap-2">
+          <Button onClick={openAddForm}>+ Add New Product</Button>
+          <Button variant="secondary" onClick={openGlobalBatchForm}>+ Add Production Batch</Button>
+        </div>
       </header>
 
       {successMessage ? (
@@ -191,63 +256,150 @@ function ProductsPage({ initialAction }) {
       {formMode ? (
         <div ref={formRef}>
           <Card
-            title={formMode === 'editProduct' ? 'Edit Product' : 'Add Product'}
+            title={
+              formMode === 'editProduct' ? 'Edit Product'
+              : formMode === 'addBatch'
+                ? selectedProduct ? `Add Production Batch — ${selectedProduct.name}` : 'Add Production Batch'
+              : 'Add New Product'
+            }
             subtitle={
-              formMode === 'editProduct'
-                ? `Editing ${selectedProduct?.name}`
-                : 'Fill in product details.'
+              formMode === 'editProduct' ? `Editing ${selectedProduct?.name}`
+              : formMode === 'addBatch' ? 'A production batch represents stock produced on a specific date with its own expiry date.'
+              : 'Create a new item in the product catalog. You can optionally add the first production batch now.'
             }
           >
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                id="prd-name"
-                label="Product Name"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="e.g. Pork Nuggets"
-              />
-              <Input
-                id="prd-price"
-                label="Selling Price (IDR)"
-                type="number"
-                min="0"
-                value={draftPrice}
-                onChange={(e) => setDraftPrice(Number(e.target.value || 0))}
-              />
-              <div className="space-y-1">
-                <label htmlFor="prd-unit" className="block text-sm font-medium text-slate-700">
-                  Unit
-                </label>
-                <select
-                  id="prd-unit"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  value={draftUnit}
-                  onChange={(e) => setDraftUnit(e.target.value)}
-                >
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+            {formMode !== 'addBatch' ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Product Details
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                <Input
+                  id="prd-name"
+                  label="Product Name"
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  placeholder="e.g. Pork Nuggets"
+                />
+                <Input
+                  id="prd-price"
+                  label="Selling Price (IDR)"
+                  type="number"
+                  min="0"
+                  value={draftPrice}
+                  onChange={(e) => setDraftPrice(Number(e.target.value || 0))}
+                />
+                <div className="space-y-1">
+                  <label htmlFor="prd-unit" className="block text-sm font-medium text-slate-700">
+                    Unit
+                  </label>
+                  <select
+                    id="prd-unit"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    value={draftUnit}
+                    onChange={(e) => setDraftUnit(e.target.value)}
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="prd-status" className="block text-sm font-medium text-slate-700">
+                    Status
+                  </label>
+                  <select
+                    id="prd-status"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    value={draftStatus}
+                    onChange={(e) => setDraftStatus(e.target.value)}
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label htmlFor="prd-status" className="block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  id="prd-status"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  value={draftStatus}
-                  onChange={(e) => setDraftStatus(e.target.value)}
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
+            ) : null}
+
+            {formMode === 'addProduct' || formMode === 'addBatch' ? (
+              <div className={formMode === 'addProduct' ? 'mt-5 border-t border-slate-200 pt-4' : ''}>
+                {formMode === 'addProduct' ? (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Optional: Create First Production Batch
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      A batch tracks a specific production run — how many units were made, when, and when they expire.
+                    </p>
+                  </div>
+                ) : null}
+                {formMode === 'addBatch' ? (
+                  <div className="mb-3 max-w-sm space-y-1">
+                    <label htmlFor="batch-product" className="block text-sm font-medium text-slate-700">
+                      Product
+                    </label>
+                    <select
+                      id="batch-product"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      value={selectedProduct?.id || ''}
+                      onChange={(e) => {
+                        const product = products.find((p) => p.id === e.target.value) || null
+                        setSelectedProduct(product)
+                        resetBatchDraft(product)
+                      }}
+                    >
+                      <option value="" disabled>Select product</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input
+                    id="batch-id"
+                    label="Batch ID"
+                    value={draftBatchId}
+                    onChange={(e) => setDraftBatchId(e.target.value)}
+                    placeholder="e.g. PNG-2604-A"
+                  />
+                  <Input
+                    id="batch-quantity"
+                    label="Quantity"
+                    type="number"
+                    min="0"
+                    value={draftBatchQuantity}
+                    onChange={(e) => setDraftBatchQuantity(Math.max(0, Number(e.target.value || 0)))}
+                  />
+                  <Input
+                    id="batch-prod-date"
+                    label="Production Date"
+                    type="date"
+                    value={draftBatchProdDate}
+                    onChange={(e) => setDraftBatchProdDate(e.target.value)}
+                  />
+                  <Input
+                    id="batch-expiry-date"
+                    label="Expiry Date"
+                    type="date"
+                    value={draftBatchExpiryDate}
+                    onChange={(e) => setDraftBatchExpiryDate(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
+
             <div className="mt-4 flex items-center gap-3">
-              <Button onClick={formMode === 'editProduct' ? handleEditProduct : handleAddProduct}>
-                {formMode === 'editProduct' ? 'Update Product' : 'Add Product'}
+              <Button onClick={
+                formMode === 'editProduct' ? handleEditProduct
+                : formMode === 'addBatch' ? handleAddBatch
+                : handleAddProduct
+              }>
+                {formMode === 'editProduct' ? 'Update Product'
+                  : formMode === 'addBatch' ? 'Save Production Batch'
+                  : 'Save New Product'}
               </Button>
               <Button variant="secondary" onClick={closeForm}>Cancel</Button>
             </div>
@@ -374,7 +526,7 @@ function ProductsPage({ initialAction }) {
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <td colSpan={7} className="px-3 py-3">
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Batch Details
+                              Production Batches
                             </p>
                             <div className="overflow-x-auto">
                               <table className="min-w-full text-sm">
@@ -394,7 +546,7 @@ function ProductsPage({ initialAction }) {
                                         colSpan={5}
                                         className="py-3 text-center text-sm text-slate-500"
                                       >
-                                        No batches available.
+                                        No production batches yet.
                                       </td>
                                     </tr>
                                   ) : (
@@ -429,6 +581,18 @@ function ProductsPage({ initialAction }) {
                                   )}
                                 </tbody>
                               </table>
+                            </div>
+                            <div className="mt-3">
+                              <Button
+                                variant="secondary"
+                                className="px-3 py-1.5 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openAddBatchForm(product)
+                                }}
+                              >
+                                + Add Production Batch
+                              </Button>
                             </div>
                           </td>
                         </tr>

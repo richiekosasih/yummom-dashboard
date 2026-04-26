@@ -13,6 +13,8 @@ import {
   sortOrdersNewestFirst,
 } from '../features/orders/orders.logic'
 import { ordersRepository } from '../services/repositories/orders.repository'
+import { productsRepository } from '../services/repositories/products.repository'
+import { deductStockFIFO } from '../features/products/products.logic'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
@@ -200,6 +202,33 @@ function OrdersPage({ initialAction }) {
 
     setFormErrors({})
 
+    const allProducts = productsRepository.getAll()
+    const targetProduct = allProducts.find((p) => p.id === selectedProductId)
+    if (!targetProduct) {
+      setFormErrors({ product: 'Product not found.' })
+      return
+    }
+
+    const currentBatches = Array.isArray(targetProduct.batches) ? targetProduct.batches : []
+    const updatedBatches = deductStockFIFO(currentBatches, quantity)
+    if (!updatedBatches) {
+      const available = currentBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
+      setFormErrors({
+        quantity: `Not enough stock available. Current stock: ${available} ${targetProduct.unit || 'units'}.`,
+      })
+      return
+    }
+
+    const updatedProducts = allProducts.map((p) => {
+      if (p.id !== selectedProductId) return p
+      return {
+        ...p,
+        batches: updatedBatches,
+        totalStock: updatedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+      }
+    })
+    productsRepository.saveAll(updatedProducts)
+
     let customerId = selectedCustomerId
     let customerName = selectedCustomer?.name || 'Unknown Customer'
 
@@ -222,6 +251,9 @@ function OrdersPage({ initialAction }) {
       id: generateNextOrderId(orders),
       customerId,
       customerName,
+      productId: selectedProductId,
+      productName: targetProduct.name,
+      quantity,
       orderDate: draftOrderDate || TODAY,
       dueDate: draftDueDate || draftOrderDate || TODAY,
       orderStatus: 'pending',
@@ -412,7 +444,7 @@ function OrdersPage({ initialAction }) {
                   </option>
                   {productOptions.map((product) => (
                     <option key={product.id} value={product.id}>
-                      {product.name} — {formatIDR(product.price)}/{product.unit}
+                      {product.name} — {formatIDR(product.price)}/{product.unit} (Stock: {product.totalStock})
                     </option>
                   ))}
                 </select>
@@ -434,6 +466,11 @@ function OrdersPage({ initialAction }) {
                 />
                 {formErrors.quantity ? (
                   <p className="text-xs text-red-600">{formErrors.quantity}</p>
+                ) : null}
+                {selectedProduct ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Available stock: <span className={`font-semibold ${selectedProduct.totalStock < quantity ? 'text-red-600' : 'text-emerald-600'}`}>{selectedProduct.totalStock} {selectedProduct.unit}</span>
+                  </p>
                 ) : null}
               </div>
               <Input

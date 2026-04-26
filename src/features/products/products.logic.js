@@ -42,6 +42,25 @@ export function searchProductsByName(products, keyword) {
   )
 }
 
+export function deductStockFIFO(batches, quantity) {
+  const sorted = [...batches].sort((a, b) => {
+    const dateA = a.productionDate || a.expiryDate || '9999-12-31'
+    const dateB = b.productionDate || b.expiryDate || '9999-12-31'
+    return dateA.localeCompare(dateB)
+  })
+
+  const totalAvailable = sorted.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
+  if (totalAvailable < quantity) return null
+
+  let remaining = quantity
+  return sorted.map((batch) => {
+    if (remaining <= 0) return batch
+    const deduct = Math.min(batch.quantity, remaining)
+    remaining -= deduct
+    return { ...batch, quantity: batch.quantity - deduct }
+  })
+}
+
 export function getBatchStatus(expiryDate) {
   if (!expiryDate) {
     return {
