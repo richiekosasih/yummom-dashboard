@@ -23,14 +23,12 @@ export function getDashboardData() {
   const estimatedProfit = totalRevenue - totalExpenses
 
   return {
-    summaryCards: [
-      { id: 'total-orders', label: 'Total Orders', value: orders.length },
-      { id: 'total-revenue', label: 'Total Revenue', value: totalRevenue },
-      { id: 'total-expenses', label: 'Total Expenses', value: totalExpenses },
-      { id: 'total-products', label: 'Total Products', value: products.length },
-      { id: 'low-stock-items', label: 'Low Stock Items', value: lowStockItems.length },
-      { id: 'estimated-profit', label: 'Estimated Profit', value: estimatedProfit },
-    ],
+    totalOrders: orders.length,
+    totalRevenue,
+    totalExpenses,
+    totalProducts: products.length,
+    lowStockCount: lowStockItems.length,
+    estimatedProfit,
     recentOrders: orders.slice(0, 5),
     inventoryOverview: inventoryItems.map((item) => ({
       id: item.id,

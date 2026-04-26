@@ -46,15 +46,14 @@ function getOrderStatusContext(order) {
 function DashboardPage({ onNavigate }) {
   const [recentOrderSort, setRecentOrderSort] = useState('dueDate')
   const dashboard = getDashboardData()
-  const summaryCardMap = Object.fromEntries(
-    dashboard.summaryCards.map((card) => [card.id, card]),
-  )
-  const totalOrders = summaryCardMap['total-orders']?.value ?? 0
-  const totalRevenue = summaryCardMap['total-revenue']?.value ?? 0
-  const totalExpenses = summaryCardMap['total-expenses']?.value ?? 0
-  const totalProducts = summaryCardMap['total-products']?.value ?? 0
-  const lowStockCount = summaryCardMap['low-stock-items']?.value ?? 0
-  const estimatedProfit = summaryCardMap['estimated-profit']?.value ?? 0
+  const {
+    totalOrders,
+    totalRevenue,
+    totalExpenses,
+    totalProducts,
+    lowStockCount,
+    estimatedProfit,
+  } = dashboard
 
   const recommendedActions = [
     {
