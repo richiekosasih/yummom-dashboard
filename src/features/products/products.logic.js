@@ -6,7 +6,7 @@ function normalizeBatches(productId, batches) {
   if (!Array.isArray(batches)) return []
 
   return batches.map((batch, index) => ({
-    id: batch.id || `${productId}_batch_${index + 1}`,
+    id: batch.id || `BATCH-${String(index + 1).padStart(3, '0')}`,
     productionDate: batch.productionDate || null,
     expiryDate: batch.expiryDate || null,
     quantity: Number(batch.quantity || 0),

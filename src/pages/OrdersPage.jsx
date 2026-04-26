@@ -9,12 +9,12 @@ import {
 } from '../features/orders/orders.service'
 import {
   filterOrdersByCustomerName,
-  generateNextOrderId,
   sortOrdersNewestFirst,
 } from '../features/orders/orders.logic'
 import { ordersRepository } from '../services/repositories/orders.repository'
 import { productsRepository } from '../services/repositories/products.repository'
 import { deductStockFIFO } from '../features/products/products.logic'
+import { generateNextId } from '../utils/id'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
@@ -171,15 +171,7 @@ function OrdersPage({ initialAction }) {
   }
 
   function generateNextCustomerId() {
-    let max = 0
-    for (const c of customers) {
-      const match = c.id?.match(/^CUS-(\d+)$/)
-      if (match) {
-        const num = parseInt(match[1], 10)
-        if (num > max) max = num
-      }
-    }
-    return `CUS-${String(max + 1).padStart(3, '0')}`
+    return generateNextId('CUST', customers)
   }
 
   function handleAddOrder() {
@@ -248,7 +240,7 @@ function OrdersPage({ initialAction }) {
     }
 
     const newOrder = {
-      id: generateNextOrderId(orders),
+      id: generateNextId('ORD', orders),
       customerId,
       customerName,
       productId: selectedProductId,

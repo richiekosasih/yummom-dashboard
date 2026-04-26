@@ -9,13 +9,13 @@ const products = [
     ingredients: ['Pork', 'Bread Crumbs', 'Garlic', 'Seasoning'],
     batches: [
       {
-        id: 'PNG-2603-A',
+        id: 'BATCH-001',
         productionDate: '2026-03-20',
         expiryDate: '2026-05-10',
         quantity: 20,
       },
       {
-        id: 'PNG-2603-B',
+        id: 'BATCH-002',
         productionDate: '2026-03-27',
         expiryDate: '2026-05-17',
         quantity: 18,
@@ -32,13 +32,13 @@ const products = [
     ingredients: ['Pork', 'Tapioca Flour', 'Garlic', 'Soy Sauce'],
     batches: [
       {
-        id: 'SMB-2603-A',
+        id: 'BATCH-003',
         productionDate: '2026-03-18',
         expiryDate: '2026-04-28',
         quantity: 12,
       },
       {
-        id: 'SMB-2603-B',
+        id: 'BATCH-004',
         productionDate: '2026-03-25',
         expiryDate: '2026-05-05',
         quantity: 14,
@@ -55,13 +55,13 @@ const products = [
     ingredients: ['Flour', 'Egg', 'Pork Filling', 'Scallion'],
     batches: [
       {
-        id: 'MTM-2603-A',
+        id: 'BATCH-005',
         productionDate: '2026-03-21',
         expiryDate: '2026-04-24',
         quantity: 10,
       },
       {
-        id: 'MTM-2603-B',
+        id: 'BATCH-006',
         productionDate: '2026-03-29',
         expiryDate: '2026-05-02',
         quantity: 12,
@@ -78,7 +78,7 @@ const products = [
     ingredients: ['Pork', 'Curing Salt', 'Sugar', 'Spice Mix'],
     batches: [
       {
-        id: 'PHM-2603-A',
+        id: 'BATCH-007',
         productionDate: '2026-03-24',
         expiryDate: '2026-05-20',
         quantity: 12,

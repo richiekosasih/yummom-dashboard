@@ -40,14 +40,3 @@ export function filterOrdersByCustomerName(orders, keyword) {
   )
 }
 
-export function generateNextOrderId(existingOrders) {
-  let max = 0
-  for (const order of existingOrders) {
-    const match = order.id?.match(/^ORD-(\d+)$/)
-    if (match) {
-      const num = parseInt(match[1], 10)
-      if (num > max) max = num
-    }
-  }
-  return `ORD-${String(max + 1).padStart(3, '0')}`
-}

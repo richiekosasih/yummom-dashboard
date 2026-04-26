@@ -7,6 +7,7 @@ import { formatDate } from '../utils/date'
 import { getBatchStatus } from '../features/products/products.logic'
 import { getProducts } from '../features/products/products.service'
 import { productsRepository } from '../services/repositories/products.repository'
+import { generateNextId, generateNextBatchId } from '../utils/id'
 
 const UNIT_OPTIONS = ['pack', 'box', 'pcs', 'kg']
 const STATUS_OPTIONS = ['active', 'draft']
@@ -24,18 +25,6 @@ function getProductStatusBadge(status) {
     label: 'Active',
     className: 'bg-emerald-100 text-emerald-700',
   }
-}
-
-function generateNextProductId(products) {
-  let max = 0
-  for (const product of products) {
-    const match = product.id?.match(/^PRD-(\d+)$/)
-    if (match) {
-      const num = parseInt(match[1], 10)
-      if (num > max) max = num
-    }
-  }
-  return `PRD-${String(max + 1).padStart(3, '0')}`
 }
 
 function ProductsPage({ initialAction }) {
@@ -75,9 +64,8 @@ function ProductsPage({ initialAction }) {
     setTimeout(() => setSuccessMessage(''), 3000)
   }
 
-  function resetBatchDraft(product) {
-    const batchCount = product?.batches?.length || 0
-    setDraftBatchId(product ? `${product.id}-B${batchCount + 1}` : '')
+  function resetBatchDraft() {
+    setDraftBatchId(generateNextBatchId(products))
     setDraftBatchProdDate(TODAY)
     setDraftBatchExpiryDate('')
     setDraftBatchQuantity(0)
@@ -90,7 +78,7 @@ function ProductsPage({ initialAction }) {
     setDraftPrice(0)
     setDraftUnit(UNIT_OPTIONS[0])
     setDraftStatus(STATUS_OPTIONS[0])
-    resetBatchDraft(null)
+    resetBatchDraft()
     scrollToForm()
   }
 
@@ -126,11 +114,11 @@ function ProductsPage({ initialAction }) {
 
   function handleAddProduct() {
     if (!draftName.trim()) return
-    const newId = generateNextProductId(products)
+    const newId = generateNextId('PRD', products)
     const batches = []
     if (draftBatchQuantity > 0) {
       batches.push({
-        id: draftBatchId.trim() || `${newId}-B1`,
+        id: draftBatchId.trim() || generateNextBatchId(products),
         productionDate: draftBatchProdDate || null,
         expiryDate: draftBatchExpiryDate || null,
         quantity: Number(draftBatchQuantity),
@@ -181,21 +169,21 @@ function ProductsPage({ initialAction }) {
   function openAddBatchForm(product) {
     setFormMode('addBatch')
     setSelectedProduct(product)
-    resetBatchDraft(product)
+    resetBatchDraft()
     scrollToForm()
   }
 
   function openGlobalBatchForm() {
     setFormMode('addBatch')
     setSelectedProduct(null)
-    resetBatchDraft(null)
+    resetBatchDraft()
     scrollToForm()
   }
 
   function handleAddBatch() {
     if (!selectedProduct || draftBatchQuantity <= 0) return
     const newBatch = {
-      id: draftBatchId.trim() || `${selectedProduct.id}-B${(selectedProduct.batches?.length || 0) + 1}`,
+      id: draftBatchId.trim() || generateNextBatchId(products),
       productionDate: draftBatchProdDate || null,
       expiryDate: draftBatchExpiryDate || null,
       quantity: Number(draftBatchQuantity),
@@ -347,7 +335,7 @@ function ProductsPage({ initialAction }) {
                       onChange={(e) => {
                         const product = products.find((p) => p.id === e.target.value) || null
                         setSelectedProduct(product)
-                        resetBatchDraft(product)
+                        resetBatchDraft()
                       }}
                     >
                       <option value="" disabled>Select product</option>

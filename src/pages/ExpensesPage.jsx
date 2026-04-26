@@ -13,6 +13,7 @@ import {
   getAverageExpense,
   getAvailableMonths,
 } from '../features/expenses/expenses.logic'
+import { generateNextId } from '../utils/id'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,18 +39,6 @@ function getCategoryBadge(category) {
     default:
       return 'bg-slate-100 text-slate-700'
   }
-}
-
-function generateNextExpenseId(expenses) {
-  let max = 0
-  for (const expense of expenses) {
-    const match = expense.id?.match(/^EXP-(\d+)$/)
-    if (match) {
-      const num = parseInt(match[1], 10)
-      if (num > max) max = num
-    }
-  }
-  return `EXP-${String(max + 1).padStart(3, '0')}`
 }
 
 function ExpensesPage() {
@@ -136,7 +125,7 @@ function ExpensesPage() {
   function handleAddExpense() {
     if (!draftDescription.trim() || draftAmount <= 0) return
     const newExpense = {
-      id: generateNextExpenseId(allExpenses),
+      id: generateNextId('EXP', allExpenses),
       date: draftDate || TODAY,
       category: draftCategory,
       description: draftDescription.trim(),

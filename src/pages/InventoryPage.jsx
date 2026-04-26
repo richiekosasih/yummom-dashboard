@@ -9,22 +9,11 @@ import {
 } from '../features/inventory/inventory.logic'
 import { getInventoryItems } from '../features/inventory/inventory.service'
 import { inventoryRepository } from '../services/repositories/inventory.repository'
+import { generateNextId } from '../utils/id'
 
 const CATEGORY_OPTIONS = ['Raw Material', 'Packaging', 'Supply']
 const UNIT_OPTIONS = ['kg', 'pcs', 'pack', 'box']
 const TODAY = new Date().toISOString().slice(0, 10)
-
-function generateNextInventoryId(items) {
-  let max = 0
-  for (const item of items) {
-    const match = item.id?.match(/^INV-(\d+)$/)
-    if (match) {
-      const num = parseInt(match[1], 10)
-      if (num > max) max = num
-    }
-  }
-  return `INV-${String(max + 1).padStart(3, '0')}`
-}
 
 function InventoryPage({ initialAction }) {
   const formRef = useRef(null)
@@ -135,7 +124,7 @@ function InventoryPage({ initialAction }) {
   function handleAddItem() {
     if (!draftName.trim()) return
     const newItem = {
-      id: generateNextInventoryId(items),
+      id: generateNextId('INV', items),
       name: draftName.trim(),
       category: draftCategory,
       stock: Number(draftStock) || 0,
