@@ -11,4 +11,4 @@ export const STORAGE_KEYS = {
  * On next load, old localStorage data is cleared and repositories
  * will automatically reseed from the updated source files.
  */
-export const CURRENT_DATA_VERSION = 2
+export const CURRENT_DATA_VERSION = 3

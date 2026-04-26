@@ -7,7 +7,7 @@ import { formatDate } from '../utils/date'
 import { getBatchStatus } from '../features/products/products.logic'
 import { getProducts } from '../features/products/products.service'
 import { productsRepository } from '../services/repositories/products.repository'
-import { generateNextId, generateNextBatchId } from '../utils/id'
+import { generateNextId, generateNextBatchIdForProduct } from '../utils/id'
 
 const UNIT_OPTIONS = ['pack', 'box', 'pcs', 'kg']
 const STATUS_OPTIONS = ['active', 'draft']
@@ -42,7 +42,6 @@ function ProductsPage({ initialAction }) {
   const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
   const [draftStatus, setDraftStatus] = useState(STATUS_OPTIONS[0])
 
-  const [draftBatchId, setDraftBatchId] = useState('')
   const [draftBatchProdDate, setDraftBatchProdDate] = useState(TODAY)
   const [draftBatchExpiryDate, setDraftBatchExpiryDate] = useState('')
   const [draftBatchQuantity, setDraftBatchQuantity] = useState('')
@@ -65,7 +64,6 @@ function ProductsPage({ initialAction }) {
   }
 
   function resetBatchDraft() {
-    setDraftBatchId(generateNextBatchId(products))
     setDraftBatchProdDate(TODAY)
     setDraftBatchExpiryDate('')
     setDraftBatchQuantity('')
@@ -118,7 +116,7 @@ function ProductsPage({ initialAction }) {
     const batches = []
     if (draftBatchQuantity > 0) {
       batches.push({
-        id: draftBatchId.trim() || generateNextBatchId(products),
+        id: generateNextBatchIdForProduct(draftName.trim(), []),
         productionDate: draftBatchProdDate || null,
         expiryDate: draftBatchExpiryDate || null,
         quantity: Number(draftBatchQuantity),
@@ -183,7 +181,7 @@ function ProductsPage({ initialAction }) {
   function handleAddBatch() {
     if (!selectedProduct || draftBatchQuantity <= 0) return
     const newBatch = {
-      id: draftBatchId.trim() || generateNextBatchId(products),
+      id: generateNextBatchIdForProduct(selectedProduct.name, selectedProduct.batches || []),
       productionDate: draftBatchProdDate || null,
       expiryDate: draftBatchExpiryDate || null,
       quantity: Number(draftBatchQuantity),
@@ -202,6 +200,16 @@ function ProductsPage({ initialAction }) {
     setExpandedProductId(selectedProduct.id)
     showSuccess(`Batch "${newBatch.id}" added to ${selectedProduct.name}.`)
   }
+
+  const batchIdPreview = (() => {
+    if (formMode === 'addBatch' && selectedProduct) {
+      return generateNextBatchIdForProduct(selectedProduct.name, selectedProduct.batches || [])
+    }
+    if (formMode === 'addProduct' && draftName.trim()) {
+      return generateNextBatchIdForProduct(draftName.trim(), [])
+    }
+    return ''
+  })()
 
   const filteredProducts = searchTerm.trim()
     ? products.filter((p) =>
@@ -346,13 +354,14 @@ function ProductsPage({ initialAction }) {
                   </div>
                 ) : null}
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Input
-                    id="batch-id"
-                    label="Batch ID"
-                    value={draftBatchId}
-                    onChange={(e) => setDraftBatchId(e.target.value)}
-                    placeholder="e.g. PNG-2604-A"
-                  />
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Batch ID
+                    </label>
+                    <div className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-600">
+                      {batchIdPreview || 'Auto-generated from product name'}
+                    </div>
+                  </div>
                   <Input
                     id="batch-quantity"
                     label="Quantity"

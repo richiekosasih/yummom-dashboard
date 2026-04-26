@@ -1,12 +1,15 @@
+import { getProductInitials } from '../../utils/id'
+
 export function sortProductsByName(products) {
   return [...products].sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function normalizeBatches(productId, batches) {
+function normalizeBatches(productName, batches) {
   if (!Array.isArray(batches)) return []
 
+  const initials = getProductInitials(productName || 'XX')
   return batches.map((batch, index) => ({
-    id: batch.id || `BATCH-${String(index + 1).padStart(3, '0')}`,
+    id: batch.id || `${initials}-${String(index + 1).padStart(5, '0')}`,
     productionDate: batch.productionDate || null,
     expiryDate: batch.expiryDate || null,
     quantity: Number(batch.quantity || 0),
@@ -19,7 +22,7 @@ function getTotalStockFromBatches(batches) {
 
 export function normalizeProducts(products) {
   return products.map((product) => {
-    const batches = normalizeBatches(product.id, product.batches)
+    const batches = normalizeBatches(product.name, product.batches)
 
     return {
       id: product.id,
