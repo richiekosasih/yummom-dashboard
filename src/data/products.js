@@ -1,4 +1,4 @@
-const productsData = [
+const products = [
   {
     id: 'PRD-001',
     name: 'Pork Nuggets',
@@ -87,4 +87,4 @@ const productsData = [
   },
 ]
 
-export default productsData
+export default products

@@ -1,6 +1,6 @@
 import { localStorageClient } from '../storage/localStorageClient'
 import { STORAGE_KEYS } from '../storage/storageKeys'
-import productsData from '../../data/productsData'
+import products from '../../data/products'
 
 const KEY = STORAGE_KEYS.products
 
@@ -12,13 +12,13 @@ function getAll() {
   const items = localStorageClient.read(KEY, [])
   if (items.length > 0) {
     if (needsBatchMigration(items)) {
-      localStorageClient.write(KEY, productsData)
-      return productsData
+      localStorageClient.write(KEY, products)
+      return products
     }
     return items
   }
-  localStorageClient.write(KEY, productsData)
-  return productsData
+  localStorageClient.write(KEY, products)
+  return products
 }
 
 function saveAll(items) {

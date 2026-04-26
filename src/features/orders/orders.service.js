@@ -1,6 +1,6 @@
 import { ordersRepository } from '../../services/repositories/orders.repository'
 import customersData from '../../data/customersData'
-import productsData from '../../data/productsData'
+import { productsRepository } from '../../services/repositories/products.repository'
 import {
   filterOrdersByCustomerName,
   normalizeOrders,
@@ -35,7 +35,7 @@ export function getAllCustomers() {
 }
 
 export function getProductOptions() {
-  return productsData
+  return productsRepository.getAll()
     .filter((product) => product.status === 'active')
     .map((product) => ({
       id: product.id,
