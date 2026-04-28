@@ -292,6 +292,66 @@ function DashboardPage({ onNavigate }) {
         </Card>
       </section>
 
+      <section>
+        <Card title="Expiring Soon Products" subtitle="Batches expiring within the next 14 days">
+          {dashboard.expiringBatches.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
+              <p className="font-medium text-slate-700">No products expiring soon.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                All batches have more than 14 days until expiry.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">Product Name</th>
+                    <th className="py-2 pr-3">Batch ID</th>
+                    <th className="py-2 pr-3">Expiry Date</th>
+                    <th className="py-2 pr-3">Quantity</th>
+                    <th className="py-2">Suggested Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboard.expiringBatches.map((item) => {
+                    const isUrgent = item.daysLeft <= 7
+                    return (
+                      <tr key={item.batchId} className="border-b border-slate-100">
+                        <td className="py-3 pr-3 font-medium text-slate-700">
+                          {item.productName}
+                        </td>
+                        <td className="py-3 pr-3 font-mono text-xs text-slate-600">
+                          {item.batchId}
+                        </td>
+                        <td className="py-3 pr-3 text-slate-600">
+                          {formatDate(item.expiryDate)}
+                          <span className={`ml-2 text-xs font-medium ${isUrgent ? 'text-red-600' : 'text-amber-600'}`}>
+                            ({item.daysLeft}d left)
+                          </span>
+                        </td>
+                        <td className="py-3 pr-3 text-slate-700">
+                          {item.quantity} {item.unit}
+                        </td>
+                        <td className="py-3">
+                          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            isUrgent
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.suggestedAction}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-3">
         <Card
           title="Inventory Stock Table"

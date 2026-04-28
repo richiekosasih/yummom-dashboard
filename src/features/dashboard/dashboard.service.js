@@ -41,6 +41,30 @@ export function getDashboardData() {
     }
   }
 
+  const now = new Date()
+  const expiringBatches = []
+  for (const product of products) {
+    const batches = Array.isArray(product.batches) ? product.batches : []
+    for (const batch of batches) {
+      if (!batch.expiryDate || batch.quantity <= 0) continue
+      const daysLeft = Math.ceil(
+        (new Date(batch.expiryDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      )
+      if (daysLeft >= 0 && daysLeft <= 14) {
+        expiringBatches.push({
+          productName: product.name,
+          batchId: batch.id,
+          expiryDate: batch.expiryDate,
+          quantity: batch.quantity,
+          unit: product.unit || 'pack',
+          daysLeft,
+          suggestedAction: daysLeft <= 7 ? 'Prioritize sale' : 'Consider promo',
+        })
+      }
+    }
+  }
+  expiringBatches.sort((a, b) => a.daysLeft - b.daysLeft)
+
   return {
     totalOrders: orders.length,
     totalRevenue,
@@ -60,5 +84,6 @@ export function getDashboardData() {
       unit: item.unit || 'pack',
     })),
     lowStockAlerts: lowStockItems,
+    expiringBatches,
   }
 }
