@@ -13,7 +13,7 @@ import {
 } from '../features/orders/orders.logic'
 import { ordersRepository } from '../services/repositories/orders.repository'
 import { productsRepository } from '../services/repositories/products.repository'
-import { deductStockFIFO } from '../features/products/products.logic'
+import { deductStockFIFO, isBatchExpired } from '../features/products/products.logic'
 import { generateNextId } from '../utils/id'
 import { formatDate } from '../utils/date'
 import { formatIDR } from '../utils/currency'
@@ -205,19 +205,21 @@ function OrdersPage({ initialAction }) {
     const orderQty = Number(quantity) || 0
     const updatedBatches = deductStockFIFO(currentBatches, orderQty)
     if (!updatedBatches) {
-      const available = currentBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       setFormErrors({
-        quantity: `Not enough stock available. Current stock: ${available} ${targetProduct.unit || 'units'}.`,
+        quantity: 'Not enough non-expired stock available for this product.',
       })
       return
     }
 
     const updatedProducts = allProducts.map((p) => {
       if (p.id !== selectedProductId) return p
+      const sellableStock = updatedBatches
+        .filter((b) => !isBatchExpired(b.expiryDate))
+        .reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       return {
         ...p,
         batches: updatedBatches,
-        totalStock: updatedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+        totalStock: sellableStock,
       }
     })
     productsRepository.saveAll(updatedProducts)
@@ -436,8 +438,14 @@ function OrdersPage({ initialAction }) {
                     Select product
                   </option>
                   {productOptions.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} — {formatIDR(product.price)}/{product.unit} (Stock: {product.totalStock})
+                    <option
+                      key={product.id}
+                      value={product.id}
+                      disabled={product.totalStock <= 0}
+                    >
+                      {product.totalStock <= 0
+                        ? `${product.name} — Out of sellable stock`
+                        : `${product.name} — ${formatIDR(product.price)}/${product.unit} (Stock: ${product.totalStock})`}
                     </option>
                   ))}
                 </select>

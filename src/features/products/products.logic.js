@@ -16,8 +16,17 @@ function normalizeBatches(productName, batches) {
   }))
 }
 
-function getTotalStockFromBatches(batches) {
-  return batches.reduce((total, batch) => total + Number(batch.quantity || 0), 0)
+export function isBatchExpired(expiryDate) {
+  if (!expiryDate) return false
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return new Date(expiryDate) < now
+}
+
+function getSellableStock(batches) {
+  return batches
+    .filter((b) => !isBatchExpired(b.expiryDate))
+    .reduce((total, b) => total + Number(b.quantity || 0), 0)
 }
 
 export function normalizeProducts(products) {
@@ -32,7 +41,7 @@ export function normalizeProducts(products) {
       ingredients: Array.isArray(product.ingredients) ? product.ingredients : [],
       status: product.status || 'active',
       batches,
-      totalStock: getTotalStockFromBatches(batches),
+      totalStock: getSellableStock(batches),
     }
   })
 }
@@ -52,12 +61,13 @@ export function deductStockFIFO(batches, quantity) {
     return dateA.localeCompare(dateB)
   })
 
-  const totalAvailable = sorted.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
+  const sellable = sorted.filter((b) => !isBatchExpired(b.expiryDate))
+  const totalAvailable = sellable.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
   if (totalAvailable < quantity) return null
 
   let remaining = quantity
   return sorted.map((batch) => {
-    if (remaining <= 0) return batch
+    if (remaining <= 0 || isBatchExpired(batch.expiryDate)) return batch
     const deduct = Math.min(batch.quantity, remaining)
     remaining -= deduct
     return { ...batch, quantity: batch.quantity - deduct }

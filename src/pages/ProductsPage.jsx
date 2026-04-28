@@ -4,7 +4,7 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { formatIDR } from '../utils/currency'
 import { formatDate } from '../utils/date'
-import { getBatchStatus } from '../features/products/products.logic'
+import { getBatchStatus, isBatchExpired } from '../features/products/products.logic'
 import { getProducts } from '../features/products/products.service'
 import { productsRepository } from '../services/repositories/products.repository'
 import { generateNextId, generateNextBatchIdForProduct } from '../utils/id'
@@ -192,10 +192,13 @@ function ProductsPage({ initialAction }) {
           quantity: Number(editBatchQuantity) || 0,
         }
       })
+      const sellableStock = updatedBatches
+        .filter((b) => !isBatchExpired(b.expiryDate))
+        .reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       return {
         ...p,
         batches: updatedBatches,
-        totalStock: updatedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+        totalStock: sellableStock,
       }
     })
     persistProducts(updated)
@@ -228,10 +231,13 @@ function ProductsPage({ initialAction }) {
     const updated = products.map((p) => {
       if (p.id !== selectedProduct.id) return p
       const newBatches = [...(p.batches || []), newBatch]
+      const sellableStock = newBatches
+        .filter((b) => !isBatchExpired(b.expiryDate))
+        .reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       return {
         ...p,
         batches: newBatches,
-        totalStock: newBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+        totalStock: sellableStock,
       }
     })
     persistProducts(updated)

@@ -6,6 +6,7 @@ import {
   normalizeOrders,
   sortOrdersNewestFirst,
 } from './orders.logic'
+import { isBatchExpired } from '../products/products.logic'
 
 function enrichOrdersWithCustomerData(orders) {
   const customersById = new Map(customersData.map((customer) => [customer.id, customer]))
@@ -39,13 +40,15 @@ export function getProductOptions() {
     .filter((product) => product.status === 'active')
     .map((product) => {
       const batches = Array.isArray(product.batches) ? product.batches : []
-      const totalStock = batches.reduce((sum, b) => sum + Number(b.quantity || 0), 0)
+      const sellableStock = batches
+        .filter((b) => !isBatchExpired(b.expiryDate))
+        .reduce((sum, b) => sum + Number(b.quantity || 0), 0)
       return {
         id: product.id,
         name: product.name,
         unit: product.unit,
         price: Number(product.price || 0),
-        totalStock,
+        totalStock: sellableStock,
       }
     })
 }
