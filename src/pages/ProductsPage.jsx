@@ -46,6 +46,11 @@ function ProductsPage({ initialAction }) {
   const [draftBatchExpiryDate, setDraftBatchExpiryDate] = useState('')
   const [draftBatchQuantity, setDraftBatchQuantity] = useState('')
 
+  const [editingBatchKey, setEditingBatchKey] = useState(null)
+  const [editBatchProdDate, setEditBatchProdDate] = useState('')
+  const [editBatchExpiryDate, setEditBatchExpiryDate] = useState('')
+  const [editBatchQuantity, setEditBatchQuantity] = useState('')
+
   useEffect(() => {
     if (initialAction === 'showProductForm') {
       openAddForm()
@@ -162,6 +167,40 @@ function ProductsPage({ initialAction }) {
     if (selectedProduct?.id === product.id) closeForm()
     if (expandedProductId === product.id) setExpandedProductId(null)
     showSuccess(`Product "${product.name}" deleted.`)
+  }
+
+  function startEditBatch(productId, batch) {
+    setEditingBatchKey(`${productId}:${batch.id}`)
+    setEditBatchProdDate(batch.productionDate || '')
+    setEditBatchExpiryDate(batch.expiryDate || '')
+    setEditBatchQuantity(batch.quantity)
+  }
+
+  function cancelEditBatch() {
+    setEditingBatchKey(null)
+  }
+
+  function handleSaveEditBatch(productId, batchId) {
+    const updated = products.map((p) => {
+      if (p.id !== productId) return p
+      const updatedBatches = p.batches.map((b) => {
+        if (b.id !== batchId) return b
+        return {
+          ...b,
+          productionDate: editBatchProdDate || null,
+          expiryDate: editBatchExpiryDate || null,
+          quantity: Number(editBatchQuantity) || 0,
+        }
+      })
+      return {
+        ...p,
+        batches: updatedBatches,
+        totalStock: updatedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0),
+      }
+    })
+    persistProducts(updated)
+    setEditingBatchKey(null)
+    showSuccess(`Batch "${batchId}" updated.`)
   }
 
   function openAddBatchForm(product) {
@@ -533,14 +572,15 @@ function ProductsPage({ initialAction }) {
                                     <th className="py-2 pr-3">Production Date</th>
                                     <th className="py-2 pr-3">Expiry Date</th>
                                     <th className="py-2 pr-3">Quantity</th>
-                                    <th className="py-2">Batch Status</th>
+                                    <th className="py-2 pr-3">Batch Status</th>
+                                    <th className="py-2 text-right">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {product.batches.length === 0 ? (
                                     <tr>
                                       <td
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="py-3 text-center text-sm text-slate-500"
                                       >
                                         No production batches yet.
@@ -549,6 +589,74 @@ function ProductsPage({ initialAction }) {
                                   ) : (
                                     product.batches.map((batch) => {
                                       const batchStatus = getBatchStatus(batch.expiryDate)
+                                      const isEditing = editingBatchKey === `${product.id}:${batch.id}`
+
+                                      if (isEditing) {
+                                        return (
+                                          <tr key={batch.id} className="border-b border-slate-200/70 bg-white">
+                                            <td className="py-2 pr-3 font-mono text-xs text-slate-600">
+                                              {batch.id}
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                              <input
+                                                type="date"
+                                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                                value={editBatchProdDate}
+                                                onChange={(e) => setEditBatchProdDate(e.target.value)}
+                                              />
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                              <input
+                                                type="date"
+                                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                                value={editBatchExpiryDate}
+                                                onChange={(e) => setEditBatchExpiryDate(e.target.value)}
+                                              />
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                                value={editBatchQuantity}
+                                                onChange={(e) => setEditBatchQuantity(e.target.value)}
+                                              />
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                              <span
+                                                className={`rounded-full px-2 py-1 text-xs font-semibold ${batchStatus.className}`}
+                                              >
+                                                {batchStatus.label}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 text-right">
+                                              <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                  type="button"
+                                                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleSaveEditBatch(product.id, batch.id)
+                                                  }}
+                                                >
+                                                  Save
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    cancelEditBatch()
+                                                  }}
+                                                >
+                                                  Cancel
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        )
+                                      }
+
                                       return (
                                         <tr key={batch.id} className="border-b border-slate-200/70">
                                           <td className="py-2 pr-3 font-mono text-xs text-slate-600">
@@ -565,12 +673,24 @@ function ProductsPage({ initialAction }) {
                                           <td className="py-2 pr-3 text-slate-700">
                                             {batch.quantity} {product.unit}
                                           </td>
-                                          <td className="py-2">
+                                          <td className="py-2 pr-3">
                                             <span
                                               className={`rounded-full px-2 py-1 text-xs font-semibold ${batchStatus.className}`}
                                             >
                                               {batchStatus.label}
                                             </span>
+                                          </td>
+                                          <td className="py-2 text-right">
+                                            <button
+                                              type="button"
+                                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-50"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                startEditBatch(product.id, batch)
+                                              }}
+                                            >
+                                              Edit
+                                            </button>
                                           </td>
                                         </tr>
                                       )
