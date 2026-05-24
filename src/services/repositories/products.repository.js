@@ -5,8 +5,8 @@ import products from '../../data/products'
 const KEY = STORAGE_KEYS.products
 
 function getAll() {
-  const items = localStorageClient.read(KEY, [])
-  if (items.length > 0) return items
+  const items = localStorageClient.read(KEY, null)
+  if (Array.isArray(items)) return items
   localStorageClient.write(KEY, products)
   return products
 }

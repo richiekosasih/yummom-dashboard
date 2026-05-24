@@ -52,6 +52,7 @@ function DashboardPage({ onNavigate }) {
     totalExpenses,
     totalProducts,
     lowStockCount,
+    expiringBatchCount,
     estimatedProfit,
     overdueOrderCount,
     biggestExpenseCategory,
@@ -89,6 +90,14 @@ function DashboardPage({ onNavigate }) {
           id: 'check-low-stock',
           title: `Restock ${lowStockCount} low-stock item(s)`,
           description: `Priority: ${lowStockNames}${lowStockSuffix}.`,
+          toneClass: 'border-amber-200 bg-amber-50 text-amber-800',
+        }
+      : null,
+    expiringBatchCount > 0
+      ? {
+          id: 'sell-expiring-batches',
+          title: `Prioritize ${expiringBatchCount} expiring batch(es)`,
+          description: 'Sell these finished goods first or prepare a small promotion before expiry.',
           toneClass: 'border-amber-200 bg-amber-50 text-amber-800',
         }
       : null,
@@ -136,8 +145,7 @@ function DashboardPage({ onNavigate }) {
     if (recentOrderSort === 'total') return Number(b.total || 0) - Number(a.total || 0)
 
     return (
-      new Date(a.dueDate || a.orderDate).getTime() -
-      new Date(b.dueDate || b.orderDate).getTime()
+      String(a.dueDate || a.orderDate).localeCompare(String(b.dueDate || b.orderDate))
     )
   })
 
@@ -153,7 +161,7 @@ function DashboardPage({ onNavigate }) {
           </p>
         </div>
         <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
-          Data Source: Local Storage
+          Data source: Local storage
         </div>
       </header>
 
@@ -183,7 +191,7 @@ function DashboardPage({ onNavigate }) {
           <p className="text-3xl font-bold text-slate-900">{totalProducts}</p>
           <p className="mt-1 text-xs text-slate-500">Action: keep best sellers always available.</p>
         </Card>
-        <Card title="Low Stock Items" subtitle="Items that may run out soon">
+        <Card title="Low Supply Items" subtitle="Ingredients or supplies that need restock">
           <p className="text-3xl font-bold text-red-600">{lowStockCount}</p>
           {lowStockCount > 0 ? (
             <p className="mt-1 text-xs text-slate-600">
@@ -354,8 +362,8 @@ function DashboardPage({ onNavigate }) {
 
       <section className="grid gap-4 xl:grid-cols-3">
         <Card
-          title="Inventory Stock Table"
-          subtitle="Clear stock status for restock decisions"
+          title="Supply Inventory"
+          subtitle="Raw materials and packaging for production planning"
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

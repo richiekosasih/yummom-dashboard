@@ -18,7 +18,7 @@ function Button({
   return (
     <button
       type={type}
-      className={`rounded-lg font-medium transition ${sizeClass} ${variantClass} ${className}`}
+      className={`rounded-lg font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${sizeClass} ${variantClass} ${className}`}
       {...props}
     >
       {children}

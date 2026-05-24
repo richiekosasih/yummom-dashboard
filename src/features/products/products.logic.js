@@ -1,4 +1,5 @@
 import { getProductInitials } from '../../utils/id'
+import { getDaysUntil } from '../../utils/date'
 
 export function sortProductsByName(products) {
   return [...products].sort((a, b) => a.name.localeCompare(b.name))
@@ -17,10 +18,8 @@ function normalizeBatches(productName, batches) {
 }
 
 export function isBatchExpired(expiryDate) {
-  if (!expiryDate) return false
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  return new Date(expiryDate) < now
+  const daysLeft = getDaysUntil(expiryDate)
+  return daysLeft !== null && daysLeft < 0
 }
 
 function getSellableStock(batches) {
@@ -56,8 +55,8 @@ export function searchProductsByName(products, keyword) {
 
 export function deductStockFIFO(batches, quantity) {
   const sorted = [...batches].sort((a, b) => {
-    const dateA = a.productionDate || a.expiryDate || '9999-12-31'
-    const dateB = b.productionDate || b.expiryDate || '9999-12-31'
+    const dateA = a.expiryDate || a.productionDate || '9999-12-31'
+    const dateB = b.expiryDate || b.productionDate || '9999-12-31'
     return dateA.localeCompare(dateB)
   })
 
@@ -82,9 +81,7 @@ export function getBatchStatus(expiryDate) {
     }
   }
 
-  const now = new Date()
-  const expiry = new Date(expiryDate)
-  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const daysLeft = getDaysUntil(expiryDate)
 
   if (daysLeft < 0) {
     return {

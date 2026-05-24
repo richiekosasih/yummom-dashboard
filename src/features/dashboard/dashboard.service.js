@@ -2,6 +2,7 @@ import { getOrders } from '../orders/orders.service'
 import { getExpenses } from '../expenses/expenses.service'
 import { getProducts } from '../products/products.service'
 import { getInventoryItems } from '../inventory/inventory.service'
+import { getDaysUntil, getTodayValue } from '../../utils/date'
 
 function sumBy(items, key) {
   return items.reduce((total, item) => total + Number(item[key] || 0), 0)
@@ -22,7 +23,7 @@ export function getDashboardData() {
   const totalExpenses = sumBy(expenses, 'amount')
   const estimatedProfit = totalRevenue - totalExpenses
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayValue()
   const overdueOrders = orders.filter(
     (order) => order.dueDate < today && order.orderStatus !== 'completed',
   )
@@ -41,16 +42,13 @@ export function getDashboardData() {
     }
   }
 
-  const now = new Date()
   const expiringBatches = []
   for (const product of products) {
     const batches = Array.isArray(product.batches) ? product.batches : []
     for (const batch of batches) {
       if (!batch.expiryDate || batch.quantity <= 0) continue
-      const daysLeft = Math.ceil(
-        (new Date(batch.expiryDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-      )
-      if (daysLeft >= 0 && daysLeft <= 14) {
+      const daysLeft = getDaysUntil(batch.expiryDate)
+      if (daysLeft !== null && daysLeft >= 0 && daysLeft <= 14) {
         expiringBatches.push({
           productName: product.name,
           batchId: batch.id,
@@ -71,6 +69,7 @@ export function getDashboardData() {
     totalExpenses,
     totalProducts: products.length,
     lowStockCount: lowStockItems.length,
+    expiringBatchCount: expiringBatches.length,
     estimatedProfit,
     overdueOrderCount: overdueOrders.length,
     biggestExpenseCategory: biggestCatName

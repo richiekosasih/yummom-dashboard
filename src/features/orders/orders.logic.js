@@ -1,6 +1,8 @@
+import { getTodayValue } from '../../utils/date'
+
 export function sortOrdersNewestFirst(orders) {
   return [...orders].sort(
-    (a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime(),
+    (a, b) => String(b.orderDate).localeCompare(String(a.orderDate)),
   )
 }
 
@@ -17,12 +19,14 @@ function normalizeLegacyPaymentStatus(status) {
 }
 
 export function normalizeOrders(orders) {
+  const today = getTodayValue()
   return orders.map((order) => ({
+    ...order,
     id: order.id,
     customerId: order.customerId || null,
     customerName: order.customerName || 'Unknown Customer',
-    orderDate: order.orderDate || new Date().toISOString().slice(0, 10),
-    dueDate: order.dueDate || order.orderDate || new Date().toISOString().slice(0, 10),
+    orderDate: order.orderDate || today,
+    dueDate: order.dueDate || order.orderDate || today,
     orderStatus:
       order.orderStatus || normalizeLegacyOrderStatus(order.status),
     paymentStatus:
@@ -39,4 +43,3 @@ export function filterOrdersByCustomerName(orders, keyword) {
     order.customerName.toLowerCase().includes(normalizedKeyword),
   )
 }
-

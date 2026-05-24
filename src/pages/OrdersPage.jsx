@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -13,9 +13,10 @@ import {
 } from '../features/orders/orders.logic'
 import { ordersRepository } from '../services/repositories/orders.repository'
 import { productsRepository } from '../services/repositories/products.repository'
+import { customersRepository } from '../services/repositories/customers.repository'
 import { deductStockFIFO, isBatchExpired } from '../features/products/products.logic'
 import { generateNextId } from '../utils/id'
-import { formatDate } from '../utils/date'
+import { formatDate, getTodayValue } from '../utils/date'
 import { formatIDR } from '../utils/currency'
 
 const ORDER_STATUS_OPTIONS = [
@@ -48,7 +49,7 @@ function compareOrders(a, b, field) {
       return a.total - b.total
     case 'orderDate':
     case 'dueDate':
-      return new Date(a[field]).getTime() - new Date(b[field]).getTime()
+      return String(a[field]).localeCompare(String(b[field]))
     case 'orderStatus':
       return (ORDER_STATUS_RANK[a.orderStatus] ?? 0) - (ORDER_STATUS_RANK[b.orderStatus] ?? 0)
     case 'paymentStatus':
@@ -63,23 +64,14 @@ function getSortArrow(field, sortConfig) {
   return sortConfig.direction === 'asc' ? ' ▲' : ' ▼'
 }
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = getTodayValue()
 
 function OrdersPage({ initialAction }) {
   const formRef = useRef(null)
   const [orders, setOrders] = useState(() => getOrders())
   const [searchTerm, setSearchTerm] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [isFormOpen, setIsFormOpen] = useState(false)
-
-  useEffect(() => {
-    if (initialAction === 'showOrderForm') {
-      setIsFormOpen(true)
-      setTimeout(() => {
-        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 50)
-    }
-  }, [initialAction])
+  const [isFormOpen, setIsFormOpen] = useState(initialAction === 'showOrderForm')
 
   const [customers, setCustomers] = useState(() => getAllCustomers())
   const [customerMode, setCustomerMode] = useState('existing')
@@ -147,6 +139,26 @@ function OrdersPage({ initialAction }) {
 
   function handleDeleteOrder(order) {
     if (!window.confirm(`Delete order ${order.id}? This cannot be undone.`)) return
+    if (order.orderStatus !== 'completed' && order.productId && Number(order.quantity) > 0) {
+      const allProducts = productsRepository.getAll()
+      const restoredProducts = allProducts.map((product) => {
+        if (product.id !== order.productId) return product
+        const batches = Array.isArray(product.batches) ? product.batches : []
+        const targetBatch = [...batches]
+          .filter((batch) => !isBatchExpired(batch.expiryDate))
+          .sort((a, b) => String(a.expiryDate || '').localeCompare(String(b.expiryDate || '')))[0]
+        if (!targetBatch) return product
+        return {
+          ...product,
+          batches: batches.map((batch) =>
+            batch.id === targetBatch.id
+              ? { ...batch, quantity: Number(batch.quantity || 0) + Number(order.quantity) }
+              : batch,
+          ),
+        }
+      })
+      productsRepository.saveAll(restoredProducts)
+    }
     setOrders((prev) => {
       const updated = prev.filter((o) => o.id !== order.id)
       ordersRepository.saveAll(updated)
@@ -185,7 +197,10 @@ function OrdersPage({ initialAction }) {
     }
 
     if (!selectedProductId) errors.product = 'Please select a product.'
-    if (quantity < 1) errors.quantity = 'Quantity must be at least 1.'
+    if (Number(quantity) < 1) errors.quantity = 'Quantity must be at least 1.'
+    if (draftDueDate && draftDueDate < (draftOrderDate || TODAY)) {
+      errors.dueDate = 'Due date cannot be before the order date.'
+    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
@@ -238,6 +253,7 @@ function OrdersPage({ initialAction }) {
         isActive: true,
       }
       setCustomers((prev) => [...prev, newCustomer])
+      customersRepository.saveAll([...customers, newCustomer])
       customerId = newId
       customerName = newCustomer.name
     }
@@ -249,6 +265,9 @@ function OrdersPage({ initialAction }) {
       productId: selectedProductId,
       productName: targetProduct.name,
       quantity: orderQty,
+      address: customerMode === 'new'
+        ? newCustomerAddress.trim()
+        : selectedCustomer?.address || '',
       orderDate: draftOrderDate || TODAY,
       dueDate: draftDueDate || draftOrderDate || TODAY,
       orderStatus: 'pending',
@@ -486,7 +505,11 @@ function OrdersPage({ initialAction }) {
                 label="Due Date"
                 type="date"
                 value={draftDueDate}
-                onChange={(event) => setDraftDueDate(event.target.value)}
+                onChange={(event) => {
+                  setDraftDueDate(event.target.value)
+                  setFormErrors((prev) => ({ ...prev, dueDate: undefined }))
+                }}
+                error={formErrors.dueDate}
               />
               <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Estimated Total</p>
@@ -533,10 +556,15 @@ function OrdersPage({ initialAction }) {
                   {SORTABLE_COLUMNS.map((col) => (
                     <th
                       key={col.field}
-                      className={`cursor-pointer select-none py-2 pr-3 transition-colors hover:text-slate-800 ${col.align === 'right' ? 'text-right' : ''}`}
-                      onClick={() => handleSort(col.field)}
+                      className={`py-2 pr-3 ${col.align === 'right' ? 'text-right' : ''}`}
                     >
-                      {col.label}{getSortArrow(col.field, sortConfig)}
+                      <button
+                        type="button"
+                        className="select-none font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:text-slate-800"
+                        onClick={() => handleSort(col.field)}
+                      >
+                        {col.label}{getSortArrow(col.field, sortConfig)}
+                      </button>
                     </th>
                   ))}
                   <th className="py-2 text-right">Actions</th>

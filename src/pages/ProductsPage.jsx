@@ -1,9 +1,9 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { formatIDR } from '../utils/currency'
-import { formatDate } from '../utils/date'
+import { formatDate, getTodayValue } from '../utils/date'
 import { getBatchStatus, isBatchExpired } from '../features/products/products.logic'
 import { getProducts } from '../features/products/products.service'
 import { productsRepository } from '../services/repositories/products.repository'
@@ -11,7 +11,7 @@ import { generateNextId, generateNextBatchIdForProduct } from '../utils/id'
 
 const UNIT_OPTIONS = ['pack', 'box', 'pcs', 'kg']
 const STATUS_OPTIONS = ['active', 'draft']
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = getTodayValue()
 
 function getProductStatusBadge(status) {
   if (status === 'draft') {
@@ -33,8 +33,11 @@ function ProductsPage({ initialAction }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedProductId, setExpandedProductId] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
+  const [formErrors, setFormErrors] = useState({})
 
-  const [formMode, setFormMode] = useState(null)
+  const [formMode, setFormMode] = useState(
+    initialAction === 'showProductForm' ? 'addProduct' : null,
+  )
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   const [draftName, setDraftName] = useState('')
@@ -50,12 +53,6 @@ function ProductsPage({ initialAction }) {
   const [editBatchProdDate, setEditBatchProdDate] = useState('')
   const [editBatchExpiryDate, setEditBatchExpiryDate] = useState('')
   const [editBatchQuantity, setEditBatchQuantity] = useState('')
-
-  useEffect(() => {
-    if (initialAction === 'showProductForm') {
-      openAddForm()
-    }
-  }, [initialAction])
 
   function scrollToForm() {
     setTimeout(() => {
@@ -82,6 +79,7 @@ function ProductsPage({ initialAction }) {
     setDraftUnit(UNIT_OPTIONS[0])
     setDraftStatus(STATUS_OPTIONS[0])
     resetBatchDraft()
+    setFormErrors({})
     scrollToForm()
   }
 
@@ -92,12 +90,14 @@ function ProductsPage({ initialAction }) {
     setDraftPrice(product.price)
     setDraftUnit(product.unit)
     setDraftStatus(product.status)
+    setFormErrors({})
     scrollToForm()
   }
 
   function closeForm() {
     setFormMode(null)
     setSelectedProduct(null)
+    setFormErrors({})
   }
 
   function persistProducts(updated) {
@@ -116,12 +116,28 @@ function ProductsPage({ initialAction }) {
   }
 
   function handleAddProduct() {
-    if (!draftName.trim()) return
+    const productName = draftName.trim()
+    const errors = {}
+    if (!productName) errors.name = 'Product name is required.'
+    if (Number(draftPrice) <= 0) errors.price = 'Enter a selling price above zero.'
+    if (products.some((product) => product.name.toLowerCase() === productName.toLowerCase())) {
+      errors.name = 'A product with this name already exists.'
+    }
+    if (Number(draftBatchQuantity) > 0 && !draftBatchExpiryDate) {
+      errors.batchExpiryDate = 'Expiry date is required for stock batches.'
+    }
+    if (draftBatchExpiryDate && draftBatchProdDate > draftBatchExpiryDate) {
+      errors.batchExpiryDate = 'Expiry date must be after production date.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const newId = generateNextId('PRD', products)
     const batches = []
     if (draftBatchQuantity > 0) {
       batches.push({
-        id: generateNextBatchIdForProduct(draftName.trim(), []),
+        id: generateNextBatchIdForProduct(productName, []),
         productionDate: draftBatchProdDate || null,
         expiryDate: draftBatchExpiryDate || null,
         quantity: Number(draftBatchQuantity),
@@ -129,8 +145,8 @@ function ProductsPage({ initialAction }) {
     }
     const newProduct = {
       id: newId,
-      name: draftName.trim(),
-      price: Number(draftPrice) || 0,
+      name: productName,
+      price: Number(draftPrice),
       unit: draftUnit,
       status: draftStatus,
       totalStock: batches.reduce((sum, b) => sum + b.quantity, 0),
@@ -143,13 +159,27 @@ function ProductsPage({ initialAction }) {
   }
 
   function handleEditProduct() {
-    if (!selectedProduct || !draftName.trim()) return
+    if (!selectedProduct) return
+    const productName = draftName.trim()
+    const errors = {}
+    if (!productName) errors.name = 'Product name is required.'
+    if (Number(draftPrice) <= 0) errors.price = 'Enter a selling price above zero.'
+    if (products.some((product) =>
+      product.id !== selectedProduct.id &&
+      product.name.toLowerCase() === productName.toLowerCase()
+    )) {
+      errors.name = 'A product with this name already exists.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const updated = products.map((p) =>
       p.id === selectedProduct.id
         ? {
             ...p,
-            name: draftName.trim(),
-            price: Number(draftPrice) || 0,
+            name: productName,
+            price: Number(draftPrice),
             unit: draftUnit,
             status: draftStatus,
           }
@@ -157,7 +187,7 @@ function ProductsPage({ initialAction }) {
     )
     persistProducts(updated)
     closeForm()
-    showSuccess(`Product "${draftName.trim()}" updated.`)
+    showSuccess(`Product "${productName}" updated.`)
   }
 
   function handleDeleteProduct(product) {
@@ -170,6 +200,7 @@ function ProductsPage({ initialAction }) {
   }
 
   function startEditBatch(productId, batch) {
+    setFormErrors({})
     setEditingBatchKey(`${productId}:${batch.id}`)
     setEditBatchProdDate(batch.productionDate || '')
     setEditBatchExpiryDate(batch.expiryDate || '')
@@ -178,9 +209,20 @@ function ProductsPage({ initialAction }) {
 
   function cancelEditBatch() {
     setEditingBatchKey(null)
+    setFormErrors({})
   }
 
   function handleSaveEditBatch(productId, batchId) {
+    const errors = {}
+    if (Number(editBatchQuantity) < 0) errors.editBatchQuantity = 'Quantity cannot be negative.'
+    if (!editBatchExpiryDate) errors.editBatchExpiryDate = 'Expiry date is required.'
+    if (editBatchExpiryDate && editBatchProdDate > editBatchExpiryDate) {
+      errors.editBatchExpiryDate = 'Expiry date must be after production date.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const updated = products.map((p) => {
       if (p.id !== productId) return p
       const updatedBatches = p.batches.map((b) => {
@@ -203,6 +245,7 @@ function ProductsPage({ initialAction }) {
     })
     persistProducts(updated)
     setEditingBatchKey(null)
+    setFormErrors({})
     showSuccess(`Batch "${batchId}" updated.`)
   }
 
@@ -210,6 +253,7 @@ function ProductsPage({ initialAction }) {
     setFormMode('addBatch')
     setSelectedProduct(product)
     resetBatchDraft()
+    setFormErrors({})
     scrollToForm()
   }
 
@@ -217,11 +261,22 @@ function ProductsPage({ initialAction }) {
     setFormMode('addBatch')
     setSelectedProduct(null)
     resetBatchDraft()
+    setFormErrors({})
     scrollToForm()
   }
 
   function handleAddBatch() {
-    if (!selectedProduct || draftBatchQuantity <= 0) return
+    const errors = {}
+    if (!selectedProduct) errors.batchProduct = 'Select a product.'
+    if (Number(draftBatchQuantity) <= 0) errors.batchQuantity = 'Quantity must be above zero.'
+    if (!draftBatchExpiryDate) errors.batchExpiryDate = 'Expiry date is required.'
+    if (draftBatchExpiryDate && draftBatchProdDate > draftBatchExpiryDate) {
+      errors.batchExpiryDate = 'Expiry date must be after production date.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const newBatch = {
       id: generateNextBatchIdForProduct(selectedProduct.name, selectedProduct.batches || []),
       productionDate: draftBatchProdDate || null,
@@ -321,6 +376,7 @@ function ProductsPage({ initialAction }) {
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="e.g. Pork Nuggets"
+                  error={formErrors.name}
                 />
                 <Input
                   id="prd-price"
@@ -329,6 +385,7 @@ function ProductsPage({ initialAction }) {
                   min="0"
                   value={draftPrice}
                   onChange={(e) => setDraftPrice(e.target.value)}
+                  error={formErrors.price}
                 />
                 <div className="space-y-1">
                   <label htmlFor="prd-unit" className="block text-sm font-medium text-slate-700">
@@ -396,6 +453,9 @@ function ProductsPage({ initialAction }) {
                         <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
                       ))}
                     </select>
+                    {formErrors.batchProduct ? (
+                      <p className="text-xs text-red-600">{formErrors.batchProduct}</p>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="grid gap-3 md:grid-cols-2">
@@ -414,6 +474,7 @@ function ProductsPage({ initialAction }) {
                     min="0"
                     value={draftBatchQuantity}
                     onChange={(e) => setDraftBatchQuantity(e.target.value)}
+                    error={formErrors.batchQuantity}
                   />
                   <Input
                     id="batch-prod-date"
@@ -428,6 +489,7 @@ function ProductsPage({ initialAction }) {
                     type="date"
                     value={draftBatchExpiryDate}
                     onChange={(e) => setDraftBatchExpiryDate(e.target.value)}
+                    error={formErrors.batchExpiryDate}
                   />
                 </div>
               </div>
@@ -518,16 +580,20 @@ function ProductsPage({ initialAction }) {
 
                   return (
                     <Fragment key={product.id}>
-                      <tr
-                        className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                        onClick={toggleExpandedRow}
-                      >
+                      <tr className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="py-3 pr-3 font-mono text-xs text-slate-600">{product.id}</td>
-                        <td className="py-3 pr-3 font-medium text-slate-700">
+                        <td className="py-3 pr-3">
+                          <button
+                            type="button"
+                            className="flex items-center font-medium text-slate-700 hover:text-emerald-700"
+                            onClick={toggleExpandedRow}
+                            aria-expanded={isExpanded}
+                          >
                           <span className="mr-2 inline-block w-3 text-slate-400">
                             {isExpanded ? '▾' : '▸'}
                           </span>
                           {product.name}
+                          </button>
                         </td>
                         <td className="py-3 pr-3 text-slate-700">{formatIDR(product.price)}</td>
                         <td className="py-3 pr-3 text-slate-600">{product.unit}</td>
@@ -618,6 +684,9 @@ function ProductsPage({ initialAction }) {
                                                 value={editBatchExpiryDate}
                                                 onChange={(e) => setEditBatchExpiryDate(e.target.value)}
                                               />
+                                              {formErrors.editBatchExpiryDate ? (
+                                                <p className="mt-1 text-xs text-red-600">{formErrors.editBatchExpiryDate}</p>
+                                              ) : null}
                                             </td>
                                             <td className="py-2 pr-3">
                                               <input
@@ -627,6 +696,9 @@ function ProductsPage({ initialAction }) {
                                                 value={editBatchQuantity}
                                                 onChange={(e) => setEditBatchQuantity(e.target.value)}
                                               />
+                                              {formErrors.editBatchQuantity ? (
+                                                <p className="mt-1 text-xs text-red-600">{formErrors.editBatchQuantity}</p>
+                                              ) : null}
                                             </td>
                                             <td className="py-2 pr-3">
                                               <span

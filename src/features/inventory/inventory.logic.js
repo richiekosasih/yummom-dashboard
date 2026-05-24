@@ -55,11 +55,7 @@ export function searchInventoryItemsByName(items, keyword) {
 }
 
 export function isExpiringSoon(expiryDate, daysThreshold = 14) {
-  if (!expiryDate) return false
-
-  const now = new Date()
-  const expiry = new Date(expiryDate)
-  const diffDays = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-  return diffDays >= 0 && diffDays <= daysThreshold
+  const daysLeft = getDaysUntil(expiryDate)
+  return daysLeft !== null && daysLeft >= 0 && daysLeft <= daysThreshold
 }
+import { getDaysUntil } from '../../utils/date'

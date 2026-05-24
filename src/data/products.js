@@ -10,14 +10,14 @@ const products = [
     batches: [
       {
         id: 'PN-00001',
-        productionDate: '2026-03-20',
-        expiryDate: '2026-05-10',
+        productionDate: '2026-05-15',
+        expiryDate: '2026-06-15',
         quantity: 20,
       },
       {
         id: 'PN-00002',
-        productionDate: '2026-03-27',
-        expiryDate: '2026-05-17',
+        productionDate: '2026-05-22',
+        expiryDate: '2026-06-22',
         quantity: 18,
       },
     ],
@@ -33,14 +33,14 @@ const products = [
     batches: [
       {
         id: 'SB-00001',
-        productionDate: '2026-03-18',
-        expiryDate: '2026-04-28',
+        productionDate: '2026-05-10',
+        expiryDate: '2026-05-28',
         quantity: 12,
       },
       {
         id: 'SB-00002',
-        productionDate: '2026-03-25',
-        expiryDate: '2026-05-05',
+        productionDate: '2026-05-20',
+        expiryDate: '2026-06-10',
         quantity: 14,
       },
     ],
@@ -56,14 +56,14 @@ const products = [
     batches: [
       {
         id: 'MM-00001',
-        productionDate: '2026-03-21',
-        expiryDate: '2026-04-24',
+        productionDate: '2026-05-15',
+        expiryDate: '2026-05-26',
         quantity: 10,
       },
       {
         id: 'MM-00002',
-        productionDate: '2026-03-29',
-        expiryDate: '2026-05-02',
+        productionDate: '2026-05-19',
+        expiryDate: '2026-06-05',
         quantity: 12,
       },
     ],
@@ -79,8 +79,8 @@ const products = [
     batches: [
       {
         id: 'PH-00001',
-        productionDate: '2026-03-24',
-        expiryDate: '2026-05-20',
+        productionDate: '2026-05-21',
+        expiryDate: '2026-06-20',
         quantity: 12,
       },
     ],

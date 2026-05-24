@@ -2,13 +2,13 @@ export const STORAGE_KEYS = {
   inventory: 'yummom_inventory',
   products: 'yummom_products',
   orders: 'yummom_orders',
+  customers: 'yummom_customers',
   expenses: 'yummom_expenses',
   dataVersion: 'yummom_data_version',
 }
 
 /**
- * Bump this number whenever seed data or ID formats change.
- * On next load, old localStorage data is cleared and repositories
- * will automatically reseed from the updated source files.
+ * Stored data is preserved when this number changes. Add targeted
+ * migrations in localStorageClient if a future schema needs one.
  */
 export const CURRENT_DATA_VERSION = 3

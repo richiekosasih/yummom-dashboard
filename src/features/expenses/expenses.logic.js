@@ -1,15 +1,17 @@
+import { parseDateValue } from '../../utils/date'
+
 export function sortExpensesByName(expenses) {
   return [...expenses].sort((a, b) => a.description.localeCompare(b.description))
 }
 
 export function sortExpensesByDateDesc(expenses) {
-  return [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date))
+  return [...expenses].sort((a, b) => String(b.date).localeCompare(String(a.date)))
 }
 
 export function filterExpensesByMonth(expenses, year, month) {
   return expenses.filter((expense) => {
-    const date = new Date(expense.date)
-    return date.getFullYear() === year && date.getMonth() === month
+    const date = parseDateValue(expense.date)
+    return date?.getFullYear() === year && date.getMonth() === month
   })
 }
 
@@ -45,8 +47,8 @@ export function getAverageExpense(expenses) {
 export function getAvailableMonths(expenses) {
   const monthSet = new Set()
   for (const expense of expenses) {
-    const date = new Date(expense.date)
-    monthSet.add(`${date.getFullYear()}-${date.getMonth()}`)
+    const date = parseDateValue(expense.date)
+    if (date) monthSet.add(`${date.getFullYear()}-${date.getMonth()}`)
   }
 
   return [...monthSet]

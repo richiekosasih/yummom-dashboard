@@ -9,3 +9,18 @@ body {
   background: #f1f5f9;
   color: #0f172a;
 }
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+select {
+  outline: none;
+}
+
+select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px #d1fae5;
+}

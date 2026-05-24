@@ -1,5 +1,5 @@
 import { ordersRepository } from '../../services/repositories/orders.repository'
-import customersData from '../../data/customersData'
+import { customersRepository } from '../../services/repositories/customers.repository'
 import { productsRepository } from '../../services/repositories/products.repository'
 import {
   filterOrdersByCustomerName,
@@ -9,6 +9,7 @@ import {
 import { isBatchExpired } from '../products/products.logic'
 
 function enrichOrdersWithCustomerData(orders) {
+  const customersData = customersRepository.getAll()
   const customersById = new Map(customersData.map((customer) => [customer.id, customer]))
 
   return orders.map((order) => {
@@ -16,6 +17,7 @@ function enrichOrdersWithCustomerData(orders) {
     return {
       ...order,
       customerName: customer?.name || order.customerName || 'Unknown Customer',
+      address: order.address || customer?.address || 'Address not set',
     }
   })
 }
@@ -32,7 +34,7 @@ export function searchOrdersByCustomerName(keyword) {
 }
 
 export function getAllCustomers() {
-  return customersData
+  return customersRepository.getAll()
 }
 
 export function getProductOptions() {
