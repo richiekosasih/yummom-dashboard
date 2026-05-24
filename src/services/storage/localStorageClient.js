@@ -5,27 +5,32 @@ function read(key, fallbackValue = []) {
     const rawValue = window.localStorage.getItem(key)
     if (!rawValue) return fallbackValue
     return JSON.parse(rawValue)
-  } catch (error) {
+  } catch {
     return fallbackValue
   }
 }
 
 function write(key, value) {
-  window.localStorage.setItem(key, JSON.stringify(value))
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+    return true
+  } catch {
+    return false
+  }
 }
 
 function migrateIfNeeded() {
-  const stored = window.localStorage.getItem(STORAGE_KEYS.dataVersion)
-  if (Number(stored) >= CURRENT_DATA_VERSION) return
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEYS.dataVersion)
+    if (Number(stored) >= CURRENT_DATA_VERSION) return
 
-  window.localStorage.removeItem(STORAGE_KEYS.products)
-  window.localStorage.removeItem(STORAGE_KEYS.orders)
-  window.localStorage.removeItem(STORAGE_KEYS.inventory)
-  window.localStorage.removeItem(STORAGE_KEYS.expenses)
-  window.localStorage.setItem(
-    STORAGE_KEYS.dataVersion,
-    String(CURRENT_DATA_VERSION),
-  )
+    window.localStorage.setItem(
+      STORAGE_KEYS.dataVersion,
+      String(CURRENT_DATA_VERSION),
+    )
+  } catch {
+    // The dashboard can still run with repository seed data if storage is blocked.
+  }
 }
 
 export const localStorageClient = {

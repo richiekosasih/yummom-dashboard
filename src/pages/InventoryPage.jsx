@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
-import { formatDate } from '../utils/date'
+import { formatDate, getTodayValue } from '../utils/date'
 import {
   getProductStockStatus,
   isExpiringSoon,
@@ -13,15 +13,22 @@ import { generateNextId } from '../utils/id'
 
 const CATEGORY_OPTIONS = ['Raw Material', 'Packaging', 'Supply']
 const UNIT_OPTIONS = ['kg', 'pcs', 'pack', 'box']
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = getTodayValue()
 
 function InventoryPage({ initialAction }) {
   const formRef = useRef(null)
   const [items, setItems] = useState(() => getInventoryItems())
   const [searchTerm, setSearchTerm] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [formErrors, setFormErrors] = useState({})
 
-  const [formMode, setFormMode] = useState(null)
+  const [formMode, setFormMode] = useState(
+    initialAction === 'showStockForm'
+      ? 'addStock'
+      : initialAction === 'showItemForm'
+        ? 'addItem'
+        : null,
+  )
   const [selectedItem, setSelectedItem] = useState(null)
 
   const [stockItemId, setStockItemId] = useState('')
@@ -33,14 +40,6 @@ function InventoryPage({ initialAction }) {
   const [draftUnit, setDraftUnit] = useState(UNIT_OPTIONS[0])
   const [draftPurchaseDate, setDraftPurchaseDate] = useState(TODAY)
   const [draftExpiryDate, setDraftExpiryDate] = useState('')
-
-  useEffect(() => {
-    if (initialAction === 'showStockForm') {
-      openAddStockForm()
-    } else if (initialAction === 'showItemForm') {
-      openAddItemForm()
-    }
-  }, [initialAction])
 
   function scrollToForm() {
     setTimeout(() => {
@@ -58,6 +57,7 @@ function InventoryPage({ initialAction }) {
     setSelectedItem(null)
     setStockItemId('')
     setStockAmount('')
+    setFormErrors({})
     scrollToForm()
   }
 
@@ -65,6 +65,7 @@ function InventoryPage({ initialAction }) {
     setFormMode('addItem')
     setSelectedItem(null)
     resetItemDraft()
+    setFormErrors({})
     scrollToForm()
   }
 
@@ -77,12 +78,14 @@ function InventoryPage({ initialAction }) {
     setDraftUnit(item.unit)
     setDraftPurchaseDate(item.purchaseDate || '')
     setDraftExpiryDate(item.expiryDate || '')
+    setFormErrors({})
     scrollToForm()
   }
 
   function closeForm() {
     setFormMode(null)
     setSelectedItem(null)
+    setFormErrors({})
   }
 
   function resetItemDraft() {
@@ -109,7 +112,13 @@ function InventoryPage({ initialAction }) {
   }
 
   function handleAddStock() {
-    if (!stockItemId || stockAmount <= 0) return
+    const errors = {}
+    if (!stockItemId) errors.stockItem = 'Select an inventory item.'
+    if (Number(stockAmount) <= 0) errors.stockAmount = 'Amount must be above zero.'
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const updated = items.map((item) =>
       item.id === stockItemId
         ? { ...item, stock: item.stock + Number(stockAmount) }
@@ -122,7 +131,11 @@ function InventoryPage({ initialAction }) {
   }
 
   function handleAddItem() {
-    if (!draftName.trim()) return
+    const errors = validateItemDraft()
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const newItem = {
       id: generateNextId('INV', items),
       name: draftName.trim(),
@@ -138,7 +151,12 @@ function InventoryPage({ initialAction }) {
   }
 
   function handleEditItem() {
-    if (!selectedItem || !draftName.trim()) return
+    if (!selectedItem) return
+    const errors = validateItemDraft(selectedItem.id)
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const updated = items.map((item) =>
       item.id === selectedItem.id
         ? {
@@ -155,6 +173,20 @@ function InventoryPage({ initialAction }) {
     persistItems(updated)
     closeForm()
     showSuccess(`Item "${draftName.trim()}" updated.`)
+  }
+
+  function validateItemDraft(currentId = null) {
+    const errors = {}
+    const itemName = draftName.trim().toLowerCase()
+    if (!itemName) errors.name = 'Item name is required.'
+    if (Number(draftStock) < 0) errors.stock = 'Stock cannot be negative.'
+    if (items.some((item) => item.id !== currentId && item.name.toLowerCase() === itemName)) {
+      errors.name = 'An inventory item with this name already exists.'
+    }
+    if (draftExpiryDate && draftPurchaseDate > draftExpiryDate) {
+      errors.expiryDate = 'Expiry date must be after purchase date.'
+    }
+    return errors
   }
 
   function handleDeleteItem(item) {
@@ -217,6 +249,9 @@ function InventoryPage({ initialAction }) {
                     </option>
                   ))}
                 </select>
+                {formErrors.stockItem ? (
+                  <p className="text-xs text-red-600">{formErrors.stockItem}</p>
+                ) : null}
               </div>
               <Input
                 id="stock-amount"
@@ -225,6 +260,7 @@ function InventoryPage({ initialAction }) {
                 min="1"
                 value={stockAmount}
                 onChange={(e) => setStockAmount(e.target.value)}
+                error={formErrors.stockAmount}
               />
             </div>
             <div className="mt-4 flex items-center gap-3">
@@ -248,6 +284,7 @@ function InventoryPage({ initialAction }) {
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
                 placeholder="e.g. Pork"
+                error={formErrors.name}
               />
               <div className="space-y-1">
                 <label htmlFor="inv-category" className="block text-sm font-medium text-slate-700">
@@ -271,6 +308,7 @@ function InventoryPage({ initialAction }) {
                 min="0"
                 value={draftStock}
                 onChange={(e) => setDraftStock(e.target.value)}
+                error={formErrors.stock}
               />
               <div className="space-y-1">
                 <label htmlFor="inv-unit" className="block text-sm font-medium text-slate-700">
@@ -300,6 +338,7 @@ function InventoryPage({ initialAction }) {
                 type="date"
                 value={draftExpiryDate}
                 onChange={(e) => setDraftExpiryDate(e.target.value)}
+                error={formErrors.expiryDate}
               />
             </div>
             <div className="mt-4 flex items-center gap-3">

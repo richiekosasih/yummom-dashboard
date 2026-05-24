@@ -3,7 +3,7 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { formatIDR } from '../utils/currency'
-import { formatDate } from '../utils/date'
+import { formatDate, getTodayValue, parseDateValue } from '../utils/date'
 import { expensesRepository } from '../services/repositories/expenses.repository'
 import {
   sortExpensesByDateDesc,
@@ -22,7 +22,7 @@ const MONTH_NAMES = [
 
 const CATEGORY_OPTIONS = ['Raw Materials', 'Packaging', 'Operations']
 const PAYMENT_OPTIONS = ['Cash', 'Transfer']
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = getTodayValue()
 
 function formatMonthLabel(year, month) {
   return `${MONTH_NAMES[month]} ${year}`
@@ -45,6 +45,7 @@ function ExpensesPage() {
   const formRef = useRef(null)
   const [allExpenses, setAllExpenses] = useState(() => expensesRepository.getAll())
   const [successMessage, setSuccessMessage] = useState('')
+  const [formErrors, setFormErrors] = useState({})
 
   const [formMode, setFormMode] = useState(null)
   const [selectedExpense, setSelectedExpense] = useState(null)
@@ -96,6 +97,7 @@ function ExpensesPage() {
     setDraftAmount('')
     setDraftPaymentMethod(PAYMENT_OPTIONS[0])
     setDraftNotes('')
+    setFormErrors({})
   }
 
   function openAddForm() {
@@ -114,16 +116,22 @@ function ExpensesPage() {
     setDraftAmount(expense.amount)
     setDraftPaymentMethod(expense.paymentMethod)
     setDraftNotes(expense.notes || '')
+    setFormErrors({})
     scrollToForm()
   }
 
   function closeForm() {
     setFormMode(null)
     setSelectedExpense(null)
+    setFormErrors({})
   }
 
   function handleAddExpense() {
-    if (!draftDescription.trim() || draftAmount <= 0) return
+    const errors = validateDraft()
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const newExpense = {
       id: generateNextId('EXP', allExpenses),
       date: draftDate || TODAY,
@@ -136,7 +144,7 @@ function ExpensesPage() {
     persistExpenses([...allExpenses, newExpense])
     closeForm()
 
-    const newDate = new Date(newExpense.date)
+    const newDate = parseDateValue(newExpense.date)
     const newMonthKey = `${newDate.getFullYear()}-${newDate.getMonth()}`
     setSelectedMonthKey(newMonthKey)
 
@@ -144,7 +152,12 @@ function ExpensesPage() {
   }
 
   function handleEditExpense() {
-    if (!selectedExpense || !draftDescription.trim()) return
+    if (!selectedExpense) return
+    const errors = validateDraft()
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
     const updated = allExpenses.map((e) =>
       e.id === selectedExpense.id
         ? {
@@ -152,7 +165,7 @@ function ExpensesPage() {
             date: draftDate || e.date,
             category: draftCategory,
             description: draftDescription.trim(),
-            amount: Number(draftAmount) || e.amount,
+            amount: Number(draftAmount),
             paymentMethod: draftPaymentMethod,
             notes: draftNotes.trim(),
           }
@@ -161,6 +174,14 @@ function ExpensesPage() {
     persistExpenses(updated)
     closeForm()
     showSuccess(`Expense "${draftDescription.trim()}" updated.`)
+  }
+
+  function validateDraft() {
+    const errors = {}
+    if (!draftDescription.trim()) errors.description = 'Description is required.'
+    if (Number(draftAmount) <= 0) errors.amount = 'Amount must be above zero.'
+    if (!draftDate) errors.date = 'Date is required.'
+    return errors
   }
 
   function handleDeleteExpense(expense) {
@@ -208,6 +229,7 @@ function ExpensesPage() {
                 type="date"
                 value={draftDate}
                 onChange={(e) => setDraftDate(e.target.value)}
+                error={formErrors.date}
               />
               <div className="space-y-1">
                 <label htmlFor="exp-category" className="block text-sm font-medium text-slate-700">
@@ -230,6 +252,7 @@ function ExpensesPage() {
                 value={draftDescription}
                 onChange={(e) => setDraftDescription(e.target.value)}
                 placeholder="e.g. Pork purchase - 20kg"
+                error={formErrors.description}
               />
               <Input
                 id="exp-amount"
@@ -238,6 +261,7 @@ function ExpensesPage() {
                 min="0"
                 value={draftAmount}
                 onChange={(e) => setDraftAmount(e.target.value)}
+                error={formErrors.amount}
               />
               <div className="space-y-1">
                 <label htmlFor="exp-payment" className="block text-sm font-medium text-slate-700">

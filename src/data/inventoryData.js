@@ -5,8 +5,8 @@ const inventoryData = [
     category: 'Raw Material',
     stock: 45,
     unit: 'kg',
-    purchaseDate: '2026-03-26',
-    expiryDate: '2026-04-09',
+    purchaseDate: '2026-05-20',
+    expiryDate: '2026-05-29',
   },
   {
     id: 'INV-002',
@@ -14,8 +14,8 @@ const inventoryData = [
     category: 'Raw Material',
     stock: 20,
     unit: 'kg',
-    purchaseDate: '2026-03-22',
-    expiryDate: '2026-04-18',
+    purchaseDate: '2026-05-18',
+    expiryDate: '2026-06-05',
   },
   {
     id: 'INV-003',
@@ -23,8 +23,8 @@ const inventoryData = [
     category: 'Raw Material',
     stock: 16,
     unit: 'kg',
-    purchaseDate: '2026-03-19',
-    expiryDate: '2026-06-19',
+    purchaseDate: '2026-05-15',
+    expiryDate: '2026-07-19',
   },
   {
     id: 'INV-004',
@@ -32,7 +32,7 @@ const inventoryData = [
     category: 'Packaging',
     stock: 350,
     unit: 'pcs',
-    purchaseDate: '2026-03-15',
+    purchaseDate: '2026-05-12',
     expiryDate: null,
   },
   {
@@ -41,7 +41,7 @@ const inventoryData = [
     category: 'Packaging',
     stock: 220,
     unit: 'pcs',
-    purchaseDate: '2026-03-17',
+    purchaseDate: '2026-05-14',
     expiryDate: null,
   },
   {
@@ -50,7 +50,7 @@ const inventoryData = [
     category: 'Supply',
     stock: 10,
     unit: 'pack',
-    purchaseDate: '2026-03-28',
+    purchaseDate: '2026-05-20',
     expiryDate: null,
   },
 ]

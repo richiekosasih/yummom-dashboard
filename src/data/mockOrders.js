@@ -2,8 +2,8 @@ const mockOrders = [
   {
     id: 'ORD-001',
     customerId: 'CUST-001',
-    orderDate: '2026-03-28',
-    dueDate: '2026-03-30',
+    orderDate: '2026-05-22',
+    dueDate: '2026-05-26',
     orderStatus: 'pending',
     paymentStatus: 'unpaid',
     total: 210000,
@@ -11,8 +11,8 @@ const mockOrders = [
   {
     id: 'ORD-002',
     customerId: 'CUST-002',
-    orderDate: '2026-03-27',
-    dueDate: '2026-03-29',
+    orderDate: '2026-05-20',
+    dueDate: '2026-05-23',
     orderStatus: 'completed',
     paymentStatus: 'paid',
     total: 120000,
@@ -20,8 +20,8 @@ const mockOrders = [
   {
     id: 'ORD-003',
     customerId: 'CUST-003',
-    orderDate: '2026-03-26',
-    dueDate: '2026-03-31',
+    orderDate: '2026-05-21',
+    dueDate: '2026-05-24',
     orderStatus: 'in_progress',
     paymentStatus: 'paid',
     total: 175000,

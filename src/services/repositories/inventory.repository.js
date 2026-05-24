@@ -5,8 +5,8 @@ import inventoryData from '../../data/inventoryData'
 const KEY = STORAGE_KEYS.inventory
 
 function getAll() {
-  const items = localStorageClient.read(KEY, [])
-  if (items.length > 0) return items
+  const items = localStorageClient.read(KEY, null)
+  if (Array.isArray(items)) return items
   localStorageClient.write(KEY, inventoryData)
   return inventoryData
 }
